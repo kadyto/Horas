@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Entrar · Horas{% endblock %}
+{% block content %}
+<div class="login-layout">
+  <div class="login-intro"><p class="eyebrow">UN POCO MÁS FÁCIL</p><h1>Tu tiempo.<br>Tus cuentas claras.</h1><p>Anota tus horas en el calendario y lleva al día lo que has ganado. Así de sencillo.</p><div class="login-illustration" aria-hidden="true"><span class="clock-face">◷</span><div><span class="example-label">CADA HORA SUMA</span><strong>Un día a la vez.</strong></div></div></div>
+  <section class="panel login-panel"><span class="section-icon" aria-hidden="true">→</span><h2>Bienvenido a Horas</h2><p class="muted">Introduce tu contraseña para continuar.</p>
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ url_for('login') }}">
+      <input type="hidden" name="csrf" value="{{ csrf() }}">
+      <label for="password">Contraseña</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="1024" autofocus>
+      <button class="button primary full" type="submit">Entrar <span aria-hidden="true">→</span></button>
+    </form><p class="small muted login-help">Acceso protegido. Tus registros se guardan en el servidor.</p>
+  </section>
+</div>
+{% endblock %}

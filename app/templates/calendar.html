@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}{{ month|month_label|capitalize }} · Horas{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">TU TIEMPO, EN ORDEN</p><h1>Cada hora cuenta.</h1><p class="muted">Un toque en el calendario. Tus cuentas al día.</p></div><a class="button primary" href="{{ url_for('entry', day=today if today[:7] == month else month ~ '-01') }}"><span aria-hidden="true">＋</span> Añadir registro</a></div>
+{% if data.rate_cents == 0 %}<div class="notice" role="status">Tu tarifa de este mes está a 0 €/h. <a class="text-link" href="#month-rate"><strong>Configúrala aquí</strong></a> para calcular lo que has ganado.</div>{% endif %}
+<section class="stats" aria-label="Resumen del mes">
+  <div class="stat"><span class="stat-label">HORAS DEL MES <span aria-hidden="true">◷</span></span><strong>{{ data.minutes|hours|replace('.', ',') }}<small> h</small></strong><span class="stat-caption">{{ data.days }} {{ 'día registrado' if data.days == 1 else 'días registrados' }}</span></div>
+  <div class="stat"><span class="stat-label">TARIFA POR HORA <span aria-hidden="true">€</span></span><strong>{{ data.rate_cents|money }}</strong><a class="stat-caption text-link" href="#month-rate">Cambiar tarifa de este mes ↓</a></div>
+  <div class="stat total-stat"><span class="stat-label">ACUMULADO DEL MES <span aria-hidden="true">€</span></span><strong>{{ total|money }}</strong><span class="stat-caption">{% if data.paid %}✓ Marcado como cobrado{% elif data.days %}Pendiente de cobro{% else %}Todo empieza con el primer día{% endif %}</span></div>
+</section>
+<div class="calendar-layout">
+<section class="panel calendar-panel" aria-label="Calendario mensual">
+  <div class="calendar-heading"><div class="month-heading"><h2>{{ month|month_label|capitalize }}</h2><span class="small muted">Selecciona un día para anotar tus horas</span></div><div class="month-navigation">{% if previous %}<a class="icon-button" href="{{ url_for('calendar_page', month=previous) }}" aria-label="Mes anterior">‹</a>{% endif %}<a class="button compact" href="{{ url_for('calendar_page') }}">Hoy</a>{% if following %}<a class="icon-button" href="{{ url_for('calendar_page', month=following) }}" aria-label="Mes siguiente">›</a>{% endif %}</div></div>
+  <form method="get" class="quick-controls" action="{{ url_for('calendar_page') }}">
+    <input type="hidden" name="month" value="{{ month }}"><label for="quick-hours"><span class="quick-dot" aria-hidden="true"></span>Registro rápido</label><select id="quick-hours" name="hours" data-auto-submit aria-describedby="quick-help">{% for n in range(1,49) %}<option value="{{ n / 2 }}" {% if n * 30 == quick_minutes %}selected{% endif %}>{{ (n * 30)|hours|replace('.', ',') }} h{% if n * 30 == prefs.default_minutes %} · habitual{% endif %}</option>{% endfor %}</select><button class="button compact" type="submit">Aplicar</button><span id="quick-help" class="small muted">Toca un día vacío para guardar {{ quick_minutes|hours|replace('.', ',') }} h.</span>
+  </form>
+  <div class="calendar-weekdays" aria-hidden="true"><span>LUN</span><span>MAR</span><span>MIÉ</span><span>JUE</span><span>VIE</span><span>SÁB</span><span>DOM</span></div>
+  <div class="calendar-grid">
+  {% for week in weeks %}{% for n in week %}
+    {% if n %}{% set day = month ~ '-%02d'|format(n) %}{% set row = entries.get(day) %}
+    <div class="calendar-cell {% if row %}recorded{% endif %} {% if day == today %}today{% endif %} {% if loop.index > 5 %}weekend{% endif %}">
+      {% if row %}<a class="day-content" href="{{ url_for('entry', day=day) }}" aria-label="Editar {{ day|day_label }}: {{ row.minutes|hours|replace('.', ',') }} horas" {% if day == today %}aria-current="date"{% endif %}><span class="day-number">{{ n }}</span><span class="day-hours">{{ row.minutes|hours|replace('.', ',') }}<small> h</small></span><span class="day-note">{% if row.note %}<span class="note-dot" aria-hidden="true"></span> <span class="desktop-only">{{ row.note|truncate(18) }}</span>{% else %}<span class="desktop-only">Registrado</span>{% endif %}</span></a>
+      {% else %}<form method="post" action="{{ url_for('quick_entry') }}"><input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="day" value="{{ day }}"><input type="hidden" name="hours" value="{{ quick_minutes|hours }}"><button class="day-content empty-day" aria-label="Registrar {{ quick_minutes|hours|replace('.', ',') }} horas el {{ day|day_label }}" {% if day == today %}aria-current="date"{% endif %}><span class="day-number">{{ n }}</span><span class="day-add" aria-hidden="true">＋</span></button></form>{% endif %}
+    </div>
+    {% else %}<div class="calendar-cell outside" aria-hidden="true"></div>{% endif %}
+  {% endfor %}{% endfor %}
+  </div>
+  <div class="calendar-footer"><span><i class="legend-dot" aria-hidden="true"></i> Día registrado</span><span class="muted">Toca un registro para editarlo.</span></div>
+</section>
+<aside class="month-sidebar">
+  <section class="panel balance-panel"><p class="eyebrow">LAS CUENTAS DEL MES</p><h2>{{ month|month_label|capitalize }}</h2><div class="calculation"><span>{{ data.minutes|hours|replace('.', ',') }} h</span><span aria-hidden="true">×</span><span>{{ data.rate_cents|money }}/h</span></div><p class="balance-total">{{ total|money }}</p><span class="badge {% if data.paid %}paid{% endif %}">{% if data.paid %}✓ Cobrado{% else %}◷ Pendiente{% endif %}</span>
+    {% if data.days %}<form action="{{ url_for('month_paid') }}" method="post" class="paid-form"><input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="month" value="{{ month }}"><input type="hidden" name="paid" value="{{ 0 if data.paid else 1 }}"><input type="hidden" name="minutes" value="{{ data.minutes }}"><input type="hidden" name="rate_cents" value="{{ data.rate_cents }}"><button class="button full" type="submit">{{ 'Marcar como pendiente' if data.paid else '✓ Marcar como cobrado' }}</button></form>{% endif %}
+    <a class="export-link" href="{{ url_for('export_csv', month=month) }}">↓ Descargar mes en CSV</a>
+  </section>
+  <section class="panel rate-panel" id="month-rate"><h2>Tarifa de este mes</h2><p class="small muted">Solo se aplica a {{ month|month_label }}.</p><form method="post" action="{{ url_for('month_rate') }}"><input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="month" value="{{ month }}"><label for="month-rate-input">Euros por hora</label><div class="rate-input"><input id="month-rate-input" name="rate" type="text" inputmode="decimal" value="{{ '%.2f'|format(data.rate_cents / 100)|replace('.', ',') }}" required><span>€/h</span></div><button class="button full" type="submit">Guardar tarifa</button></form></section>
+  <div class="tip"><span aria-hidden="true">＋</span><p><strong>A tu ritmo.</strong> Cambia las horas habituales en <a href="{{ url_for('settings_page') }}">Ajustes</a>. Los días que ya has guardado se conservan.</p></div>
+</aside>
+</div>
+<section class="panel records-panel"><div class="section-heading"><h2>Registros del mes <span class="count">{{ data.days }}</span></h2><span class="small muted">{{ data.minutes|hours|replace('.', ',') }} h en total</span></div>{% if data.entries %}<div class="records-list">{% for row in data.entries|reverse %}<a href="{{ url_for('entry', day=row.day) }}" class="record-row"><span class="record-date">{{ row.day[8:] }}<small>{{ month|month_label }}</small></span><span class="record-note">{{ row.note or 'Sin nota' }}</span><strong>{{ row.minutes|hours|replace('.', ',') }} h</strong><span class="muted" aria-hidden="true">→</span></a>{% endfor %}</div>{% else %}<div class="empty-state"><span aria-hidden="true">◷</span><h3>Tu mes empieza aquí</h3><p>Toca un día del calendario para guardar tus primeras horas.</p></div>{% endif %}</section>
+{% endblock %}

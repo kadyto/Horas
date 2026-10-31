@@ -1,0 +1,9 @@
+[project]
+name = "horas"
+version = "1.0.0"
+description = "Calendario de horas y remuneración mensual"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

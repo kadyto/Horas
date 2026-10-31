@@ -1,0 +1,28 @@
+name: Comprobaciones
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -q
+      - name: Validar Compose
+        env:
+          APP_PASSWORD: workflow-validation-only
+        run: |
+          docker compose -f compose.yaml config --quiet
+          docker compose -f compose.dockhand.yaml config --quiet
+      - name: Construir la imagen
+        run: docker build -t horas:test .
+      - name: Probar imagen, autenticación y persistencia
+        run: python tests/smoke_docker.py
