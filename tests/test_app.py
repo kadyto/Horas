@@ -12,7 +12,7 @@ from app.domain import earnings, hours_to_minutes, rate_to_cents
 
 @pytest.fixture
 def app(tmp_path):
-    return create_app({"DATA_DIR": tmp_path, "APP_PASSWORD": "pruebas-sin-datos-reales", "TESTING": True})
+    return create_app({"DATA_DIR": tmp_path, "APP_PASSWORD": "1234", "TESTING": True})
 
 
 def token(client):
@@ -22,7 +22,7 @@ def token(client):
 
 def login(client):
     client.get("/login")
-    return client.post("/login", data={"csrf": token(client), "password": "pruebas-sin-datos-reales"}, follow_redirects=True)
+    return client.post("/login", data={"csrf": token(client), "password": "1234"}, follow_redirects=True)
 
 
 @pytest.fixture
@@ -46,9 +46,10 @@ def revision(app, day):
         return conn.execute("SELECT revision FROM entries WHERE day=?", (day,)).fetchone()[0]
 
 
-def test_start_requires_real_password(tmp_path):
+@pytest.mark.parametrize("password", ["", "123"])
+def test_start_requires_minimum_password_length(tmp_path, password):
     with pytest.raises(RuntimeError, match="APP_PASSWORD"):
-        create_app({"DATA_DIR": tmp_path, "APP_PASSWORD": ""})
+        create_app({"DATA_DIR": tmp_path, "APP_PASSWORD": password})
 
 
 def test_routes_are_private_and_csrf_is_enforced(app, client):
@@ -202,7 +203,7 @@ def test_backup_restore_is_atomic_and_persistent(app, client):
     assert response.status_code == 200
     assert backup(client) == saved
     assert (app.config["DATA_DIR"] / "before-restore.sqlite3").exists()
-    restarted = create_app({"DATA_DIR": app.config["DATA_DIR"], "APP_PASSWORD": "pruebas-sin-datos-reales", "TESTING": True})
+    restarted = create_app({"DATA_DIR": app.config["DATA_DIR"], "APP_PASSWORD": "1234", "TESTING": True})
     with restarted.test_client() as new:
         login(new)
         assert backup(new) == saved

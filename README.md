@@ -24,7 +24,7 @@ Hay dos formas de usar el repositorio:
 
 1. Crea un stack, por ejemplo `horas`.
 2. Pega el contenido de [`compose.dockhand.yaml`](compose.dockhand.yaml) en el editor de Compose. Este archivo construye la imagen desde el archivo público del repositorio y no necesita un clon local.
-3. En las variables del stack, añade `APP_PASSWORD` con una contraseña propia de **al menos 12 caracteres**. Opcionalmente configura `APP_PORT`; su valor por defecto es `8092`.
+3. En las variables del stack, añade `APP_PASSWORD` con una contraseña de **al menos 4 caracteres**, sin requisitos de mayúsculas, números ni símbolos. Opcionalmente configura `APP_PORT`; su valor por defecto es `8092`.
 4. Despliega el stack con construcción de imagen habilitada. La primera vez necesita acceso a GitHub, al registro de imágenes de Docker y a PyPI.
 5. Abre `http://<servidor>:8092` e introduce la contraseña que has configurado.
 
@@ -72,7 +72,7 @@ docker compose up -d --build
 
 | Variable | Valor por defecto | Uso |
 | --- | --- | --- |
-| `APP_PASSWORD` | Obligatoria | Contraseña de acceso, entre 12 y 1024 caracteres. Sin un valor válido, el servicio no arranca. |
+| `APP_PASSWORD` | Obligatoria | Contraseña de acceso, entre 4 y 1024 caracteres, sin requisitos de composición. Sin un valor válido, el servicio no arranca. |
 | `APP_PORT` | `8092` | Puerto publicado en el servidor. |
 | `COOKIE_SECURE` | `false` | Usa `true` cuando accedas exclusivamente mediante HTTPS; con HTTP local debe ser `false`. |
 | `DATA_DIR` | `/data` en Docker | Directorio interno de la base de datos y la clave de sesión. Mantén el volumen montado en esa ruta. |

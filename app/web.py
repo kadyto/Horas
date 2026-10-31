@@ -34,8 +34,8 @@ def create_app(config=None):
     if config:
         app.config.update(config)
     password = app.config.pop("APP_PASSWORD")
-    if len(password) < 12 or len(password) > 1024:
-        raise RuntimeError("APP_PASSWORD debe tener entre 12 y 1024 caracteres.")
+    if len(password) < 4 or len(password) > 1024:
+        raise RuntimeError("APP_PASSWORD debe tener entre 4 y 1024 caracteres.")
     data_dir = Path(app.config["DATA_DIR"])
     data_dir.mkdir(parents=True, exist_ok=True)
     key_path = data_dir / ".session-key"
@@ -93,7 +93,7 @@ def create_app(config=None):
     @app.context_processor
     def template_context():
         return {"authenticated": authorized(), "csrf": csrf_token, "today": date.today().isoformat(),
-                "current_month": date.today().strftime("%Y-%m"), "version": "1.0.1"}
+                "current_month": date.today().strftime("%Y-%m"), "version": "1.0.2"}
 
     app.jinja_env.filters.update(hours=hours_text, money=money_text, month_label=month_label, day_label=day_label)
 

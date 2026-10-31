@@ -21,7 +21,7 @@ def run(*args, check=True):
 def main():
     name = "horas-test-" + uuid.uuid4().hex[:10]
     volume = name + "-data"
-    password = secrets.token_urlsafe(30)
+    password = "".join(secrets.choice("0123456789") for _ in range(4))
     # Supply the disposable password through the child environment, not its arguments.
     os.environ["APP_PASSWORD"] = password
     jar = http.cookiejar.CookieJar()
