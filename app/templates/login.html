@@ -2,7 +2,7 @@
 {% block title %}Entrar · Horas{% endblock %}
 {% block content %}
 <div class="login-layout">
-  <div class="login-intro"><p class="eyebrow">UN POCO MÁS FÁCIL</p><h1>Tu tiempo.<br>Tus cuentas claras.</h1><p>Anota tus horas en el calendario y lleva al día lo que has ganado. Así de sencillo.</p><div class="login-illustration" aria-hidden="true"><span class="clock-face">◷</span><div><span class="example-label">CADA HORA SUMA</span><strong>Un día a la vez.</strong></div></div></div>
+  <div class="login-intro"><p class="eyebrow">UN POCO MÁS FÁCIL</p><h1>Tu tiempo.<br>Tus cuentas claras.</h1><p>Anota tus horas en el calendario y lleva al día lo que has ganado. Así de sencillo.</p><div class="login-illustration" aria-hidden="true"><img class="clock-face" src="{{ url_for('static', filename='icon.svg') }}" alt="" width="67" height="67"><div><span class="example-label">CADA HORA SUMA</span><strong>Un día a la vez.</strong></div></div></div>
   <section class="panel login-panel"><span class="section-icon" aria-hidden="true">→</span><h2>Bienvenido a Horas</h2><p class="muted">Introduce tu contraseña para continuar.</p>
     {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
     <form method="post" action="{{ url_for('login') }}">

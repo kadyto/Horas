@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ month|month_label|capitalize }} · Horas{% endblock %}
 {% block content %}
-<div class="page-heading"><div><p class="eyebrow">TU TIEMPO, EN ORDEN</p><h1>Cada hora cuenta.</h1><p class="muted">Un toque en el calendario. Tus cuentas al día.</p></div><a class="button primary" href="{{ url_for('entry', day=today if today[:7] == month else month ~ '-01') }}"><span aria-hidden="true">＋</span> Añadir registro</a></div>
+<div class="page-heading"><div><h1>Cálculo de horas mensuales</h1><p class="muted">Toca el calendario y agrega las horas.</p></div><a class="button primary" href="{{ url_for('entry', day=today if today[:7] == month else month ~ '-01') }}"><span aria-hidden="true">＋</span> Añadir registro</a></div>
 {% if data.rate_cents == 0 %}<div class="notice" role="status">Tu tarifa de este mes está a 0 €/h. <a class="text-link" href="#month-rate"><strong>Configúrala aquí</strong></a> para calcular lo que has ganado.</div>{% endif %}
 <section class="stats" aria-label="Resumen del mes">
   <div class="stat"><span class="stat-label">HORAS DEL MES <span aria-hidden="true">◷</span></span><strong>{{ data.minutes|hours|replace('.', ',') }}<small> h</small></strong><span class="stat-caption">{{ data.days }} {{ 'día registrado' if data.days == 1 else 'días registrados' }}</span></div>

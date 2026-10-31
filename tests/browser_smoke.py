@@ -24,7 +24,7 @@ def main():
         expect(page).to_have_url(base + "/login")
         page.get_by_label("Contraseña", exact=True).fill(password)
         page.get_by_role("button", name="Entrar").click()
-        expect(page.get_by_role("heading", name="Cada hora cuenta.")).to_be_visible()
+        expect(page.get_by_role("heading", name="Cálculo de horas mensuales")).to_be_visible()
         page.get_by_role("navigation").get_by_role("link", name="Ajustes", exact=True).click()
         page.get_by_label("Horas por defecto").select_option("2.0")
         page.get_by_label("Tarifa habitual").fill("12,75")

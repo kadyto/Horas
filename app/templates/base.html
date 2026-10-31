@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#102c52">
+  <meta name="theme-color" content="#32164f">
   <meta name="description" content="Tu calendario de horas y remuneración, mes a mes.">
-  <title>{% block title %}Horas · Cada hora cuenta{% endblock %}</title>
+  <title>{% block title %}Horas · Cálculo de horas mensuales{% endblock %}</title>
   <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
@@ -14,7 +14,7 @@
   <a class="skip" href="#main">Saltar al contenido</a>
   <header class="header">
     <div class="header-inner">
-      <a class="brand" href="{{ url_for('calendar_page') }}"><img src="{{ url_for('static', filename='icon.svg') }}" alt="" width="44" height="44"><span>horas<span class="tagline">cada hora cuenta.</span></span></a>
+      <a class="brand" href="{{ url_for('calendar_page') }}"><img src="{{ url_for('static', filename='icon.svg') }}" alt="" width="44" height="44"><span>horas<span class="tagline">Cálculo de horas mensuales</span></span></a>
       {% if authenticated %}
       <nav aria-label="Navegación principal">
         <a href="{{ url_for('calendar_page') }}" {% if active == 'calendar' %}aria-current="page"{% endif %}>Calendario</a>
@@ -22,13 +22,13 @@
         <a href="{{ url_for('settings_page') }}" {% if active == 'settings' %}aria-current="page"{% endif %}>Ajustes</a>
       </nav>
       <form action="{{ url_for('logout') }}" method="post" class="logout"><input type="hidden" name="csrf" value="{{ csrf() }}"><button class="header-button" title="Cerrar sesión">Salir <span aria-hidden="true">→</span></button></form>
-      {% else %}<span class="header-note">Tu tiempo, en orden.</span>{% endif %}
+      {% endif %}
     </div>
   </header>
   <main id="main" class="shell">
     {% for category, message in get_flashed_messages(with_categories=true) %}<div class="notice {{ category }}" role="status">{{ message }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
-  <footer class="footer"><span>Horas <span class="muted">/</span> Cada hora cuenta.</span><span>v{{ version }} <span aria-hidden="true">·</span> <a href="https://github.com/kadyto/Horas" target="_blank" rel="noopener noreferrer">Proyecto en GitHub →</a></span></footer>
+  <footer class="footer"><span>Horas <span class="muted">/</span> Cálculo de horas mensuales</span><span>v{{ version }} <span aria-hidden="true">·</span> <a href="https://github.com/kadyto/Horas" target="_blank" rel="noopener noreferrer">Proyecto en GitHub →</a></span></footer>
 </body>
 </html>

@@ -60,7 +60,7 @@ def main():
         assert page.url.endswith("/login")
         login_html = page.read().decode()
         logged_in = post("/login", csrf=csrf(login_html), password=password).read().decode()
-        assert "Cada hora cuenta." in logged_in
+        assert "Cálculo de horas mensuales" in logged_in
         page = post("/entries/quick", csrf=csrf(logged_in), day="2026-10-01", hours="1.5").read().decode()
         post("/month/rate", csrf=csrf(page), month="2026-10", rate="12.75").close()
         payload = json.loads(get("/backup.json").read())

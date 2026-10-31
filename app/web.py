@@ -93,7 +93,7 @@ def create_app(config=None):
     @app.context_processor
     def template_context():
         return {"authenticated": authorized(), "csrf": csrf_token, "today": date.today().isoformat(),
-                "current_month": date.today().strftime("%Y-%m"), "version": "1.0.0"}
+                "current_month": date.today().strftime("%Y-%m"), "version": "1.0.1"}
 
     app.jinja_env.filters.update(hours=hours_text, money=money_text, month_label=month_label, day_label=day_label)
 
