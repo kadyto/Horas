@@ -2,6 +2,8 @@
 
 Un calendario sencillo para registrar horas trabajadas y calcular la remuneración de cada mes. Interfaz en español, adaptable a móvil, sin servicios externos para funcionar.
 
+También hay una **[aplicación Android autónoma](android/README.md)**, con SQLite en el dispositivo, sin servidor y sin contraseña: [descargar APK](https://github.com/kadyto/Horas/raw/refs/heads/main/android/releases/Horas-1.0.0.apk). La versión para servidor que se describe a continuación mantiene su acceso con contraseña.
+
 ## Qué puedes hacer
 
 - **Un toque, un registro:** al abrir la aplicación aparece el mes actual. Toca un día vacío para guardar **2 horas** por defecto. Cambia esa cantidad en Ajustes o usa el selector de registro rápido.

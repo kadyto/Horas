@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#32164f">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Horas · Cálculo de horas mensuales</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="android.css">
+  <script src="android.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Saltar al contenido</a>
+  <header class="header"><div class="header-inner">
+    <a class="brand" href="#/calendar"><img src="icon.svg" alt="" width="44" height="44"><span>horas<span class="tagline">Cálculo de horas mensuales</span></span></a>
+    <nav aria-label="Navegación principal"><a href="#/calendar" data-nav="calendar">Calendario</a><a href="#/history" data-nav="history">Historial</a><a href="#/settings" data-nav="settings">Ajustes</a></nav>
+  </div></header>
+  <main id="main" class="shell"><p class="notice">Cargando tus horas…</p></main>
+  <footer class="footer"><span>Horas <span class="muted">/</span> Cálculo de horas mensuales</span><span>Android 1.0.0 · Datos en este dispositivo</span></footer>
+  <div id="toast" class="android-toast" role="status" hidden></div>
+</body>
+</html>

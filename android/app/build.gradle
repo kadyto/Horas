@@ -1,0 +1,38 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'app.horas.local'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.horas.local'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+        testInstrumentationRunner 'app.horas.local.OfflineTests'
+    }
+    sourceSets.main.assets.srcDirs += ['../../app/static']
+    buildFeatures { buildConfig true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    if (System.getenv('HORAS_KEYSTORE')) {
+        signingConfigs {
+            release {
+                storeFile file(System.getenv('HORAS_KEYSTORE'))
+                storePassword System.getenv('HORAS_STORE_PASSWORD')
+                keyAlias 'horas'
+                keyPassword System.getenv('HORAS_KEY_PASSWORD') ?: System.getenv('HORAS_STORE_PASSWORD')
+            }
+        }
+        buildTypes.release.signingConfig signingConfigs.release
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    lint { abortOnError true }
+}
+
+dependencies { testImplementation 'junit:junit:4.13.2' }

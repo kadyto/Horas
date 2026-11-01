@@ -9,3 +9,5 @@ test-results
 tests
 docs
 dist
+.android-signing
+android
