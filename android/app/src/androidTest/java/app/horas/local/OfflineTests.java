@@ -59,9 +59,9 @@ public final class OfflineTests extends Instrumentation {
                 check("true".equals(js(activity,"document.querySelectorAll('.recorded').length===1")),"Calendar touch stores 2 h");
                 check("true".equals(js(activity,"document.querySelector('.stats .stat strong').textContent.trim()==='2 h'")),"Default hours displayed");
                 js(activity,"document.querySelector('.recorded a').click();true");Thread.sleep(250);
-                js(activity,"document.querySelector('[data-hours=\"1.5\"]').click();document.querySelector('#entry-note').value='Nota de prueba';document.querySelector('#entry-form').requestSubmit();true");Thread.sleep(250);
+                js(activity,"document.querySelector('[data-hours=\"1.5\"]').click();document.querySelector('#entry-note').value='Nota de prueba';document.querySelector('#entry-form [type=submit]').click();true");Thread.sleep(250);
                 check("true".equals(js(activity,"document.querySelector('.day-hours').textContent.trim()==='1,5 h'")),"Half-hour edit through native bridge");
-                js(activity,"document.querySelector('#month-rate-input').value='12,75';document.querySelector('#rate-form').requestSubmit();true");
+                js(activity,"document.querySelector('#month-rate-input').value='12,75';document.querySelector('#rate-form [type=submit]').click();true");
                 check("true".equals(js(activity,"document.querySelector('.total-stat strong').textContent==='19,13 €'")),"Monthly earnings through WebView");
                 js(activity,"document.querySelector('[data-action=\"paid\"]').click();true");
                 check("true".equals(js(activity,"document.querySelector('.balance-panel>.badge').textContent==='✓ Cobrado'")),"Payment toggle through UI");

@@ -12,6 +12,10 @@ jobs:
   android:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 35]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -34,7 +38,7 @@ jobs:
       - name: Probar SQLite y WebView sin Internet ni contraseña
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           profile: pixel_2
@@ -44,13 +48,16 @@ jobs:
             adb install -r android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w app.horas.local.test/app.horas.local.OfflineTests | tee /tmp/horas-android-tests.txt
             grep -q 'horasTests=ok' /tmp/horas-android-tests.txt
+            adb uninstall app.horas.local
+            adb install android/releases/Horas-1.0.0.apk
             adb shell am start -n app.horas.local/.MainActivity
             sleep 2
+            adb shell pidof app.horas.local
             adb exec-out screencap -p > android/android-emulator.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: android-test-results
+          name: android-test-results-api-${{ matrix.api }}
           path: |
             android/app/build/reports
             android/app/build/outputs/apk/debug/app-debug.apk

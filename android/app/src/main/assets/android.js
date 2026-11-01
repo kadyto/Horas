@@ -5,7 +5,7 @@ const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','ag
 const dayNames = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const pad = value => String(value).padStart(2,'0');
 const today = () => {const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
-const esc = value => String(value ?? '').replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const hours = minutes => String(minutes/60).replace('.',',');
 const money = cents => (cents/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
 const rateInput = cents => (cents/100).toFixed(2).replace('.',',');
