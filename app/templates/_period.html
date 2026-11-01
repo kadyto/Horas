@@ -1,0 +1,1 @@
+{% macro badge(data) -%}<span class="badge {% if data.paid %}paid{% elif data.partial %}partial{% endif %}">{{ '✓ Cobrado' if data.paid else ('◐ Parcial' if data.partial else '◷ Pendiente') }}</span>{%- endmacro %}

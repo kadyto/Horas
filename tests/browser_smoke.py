@@ -38,16 +38,18 @@ def main():
         page.get_by_role("button", name="Guardar registro").click()
         expect(page.get_by_role("link", name="Editar lunes, 5 de octubre de 2026: 1,5 horas")).to_be_visible()
         expect(page.locator(".total-stat strong")).to_have_text("19,13 €")
-        page.get_by_role("button", name="Marcar como cobrado").click()
+        page.get_by_role("button", name="Marcar todo como cobrado").click()
         expect(page.locator(".balance-panel > .badge")).to_have_text("✓ Cobrado")
-        page.locator("#quick-hours").select_option("1.5")
+        with page.expect_navigation(wait_until="domcontentloaded"):
+            page.locator("#quick-hours").select_option("1.5")
         page.locator('form:has(input[name="day"][value="2026-10-07"]) button').click()
-        expect(page.locator(".balance-panel > .badge")).to_have_text("◷ Pendiente")
+        expect(page.locator(".balance-panel > .badge")).to_have_text("◐ Parcial")
         expect(page.locator(".total-stat strong")).to_have_text("38,25 €")
         # Fill a representative month for screenshots, with no real personal data.
         for day in [1, 2, 8, 12, 14, 15, 19, 20, 21, 26, 28, 29]:
             page.locator('form:has(input[name="day"][value="2026-10-%02d"]) button' % day).click()
-        page.locator("#quick-hours").select_option("2.0")
+        with page.expect_navigation(wait_until="domcontentloaded"):
+            page.locator("#quick-hours").select_option("2.0")
         page.goto(base + "/?month=2026-10")
         page.screenshot(path=str(artifact_dir / "calendario.png"), full_page=False)
         page.get_by_role("link", name="Historial", exact=True).click()

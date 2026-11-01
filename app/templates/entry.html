@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Editar' if entry else 'Añadir' }} registro · Horas{% endblock %}
 {% block content %}
-<div class="narrow"><a class="back-link" href="{{ url_for('calendar_page', month=day[:7]) }}">← Volver al calendario</a><div class="page-heading"><div><p class="eyebrow">UN DÍA A LA VEZ</p><h1>{{ 'Editar' if entry else 'Añadir' }} registro</h1><p class="muted">{{ day|day_label|capitalize }}</p></div></div>
+<div class="narrow"><a class="back-link" href="{{ url_for('calendar_page', month=day[:7], week=day_week) }}">← Volver al calendario</a><div class="page-heading"><div><p class="eyebrow">UN DÍA A LA VEZ</p><h1>{{ 'Editar' if entry else 'Añadir' }} registro</h1><p class="muted">{{ day|day_label|capitalize }}</p></div></div>
 <section class="panel"><form method="post" action="{{ url_for('entry') }}" data-entry-form><input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="revision" value="{{ entry.revision if entry else 0 }}">
   {% if entry %}<input type="hidden" name="day" value="{{ day }}">{% else %}<label for="entry-day">Día</label><input id="entry-day" type="date" name="day" min="2000-01-01" max="2100-12-31" value="{{ day }}" required>{% endif %}
   <label for="entry-hours">Horas trabajadas</label><div class="hours-control"><button class="icon-button" type="button" data-hours-step="-0.5" aria-label="Restar media hora">−</button><input id="entry-hours" name="hours" type="number" inputmode="decimal" min="0.5" max="24" step="0.5" value="{{ minutes|hours }}" required aria-describedby="hours-help"><button class="icon-button" type="button" data-hours-step="0.5" aria-label="Añadir media hora">＋</button><span>horas</span></div><p id="hours-help" class="small muted">En intervalos de media hora. Por ejemplo: 1,5 h.</p>
   <div class="presets" aria-label="Cantidades habituales">{% for amount in [0.5,1,1.5,2,3,4,8] %}<button type="button" class="preset" data-hours="{{ amount }}">{{ amount|string|replace('.0','')|replace('.', ',') }} h</button>{% endfor %}</div>
   <label for="entry-note">Nota <span class="optional">opcional</span></label><textarea id="entry-note" name="note" rows="3" maxlength="500" placeholder="Algo que quieras recordar de este día…">{{ entry.note if entry else '' }}</textarea>
-  <p class="field-help">La tarifa y el total se calculan con el mes de la fecha elegida. Puedes ajustar su tarifa desde el calendario.</p>
-  <div class="form-actions"><a class="button" href="{{ url_for('calendar_page', month=day[:7]) }}">Cancelar</a><button class="button primary" type="submit">Guardar registro</button></div>
+  <p class="field-help">La tarifa del registro se conserva al cambiar entre pago mensual y semanal. Puedes cambiar la tarifa del periodo desde el calendario.</p>
+  <div class="form-actions"><a class="button" href="{{ url_for('calendar_page', month=day[:7], week=day_week) }}">Cancelar</a><button class="button primary" type="submit">Guardar registro</button></div>
 </form></section>
 {% if entry %}<details class="danger-zone"><summary>Eliminar este registro</summary><p class="small">Se eliminarán las {{ minutes|hours|replace('.', ',') }} h de este día.</p><form method="post" action="{{ url_for('delete_entry') }}"><input type="hidden" name="csrf" value="{{ csrf() }}"><input type="hidden" name="day" value="{{ day }}"><input type="hidden" name="revision" value="{{ entry.revision }}"><button type="submit" class="button danger">Confirmar eliminación</button></form></details>{% endif %}
 </div>

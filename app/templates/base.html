@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#32164f">
   <meta name="description" content="Tu calendario de horas y remuneración, mes a mes.">
-  <title>{% block title %}Horas · Cálculo de horas mensuales{% endblock %}</title>
+  <title>{% block title %}Horas · Cálculo de horas {{ 'semanales' if frequency == 'weekly' else 'mensuales' }}{% endblock %}</title>
   <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
@@ -14,7 +14,7 @@
   <a class="skip" href="#main">Saltar al contenido</a>
   <header class="header">
     <div class="header-inner">
-      <a class="brand" href="{{ url_for('calendar_page') }}"><img src="{{ url_for('static', filename='icon.svg') }}" alt="" width="44" height="44"><span>horas<span class="tagline">Cálculo de horas mensuales</span></span></a>
+      <a class="brand" href="{{ url_for('calendar_page') }}"><img src="{{ url_for('static', filename='icon.svg') }}" alt="" width="44" height="44"><span>horas<span class="tagline">Cálculo de horas {{ 'semanales' if frequency == 'weekly' else 'mensuales' }}</span></span></a>
       {% if authenticated %}
       <nav aria-label="Navegación principal">
         <a href="{{ url_for('calendar_page') }}" {% if active == 'calendar' %}aria-current="page"{% endif %}>Calendario</a>
@@ -29,6 +29,6 @@
     {% for category, message in get_flashed_messages(with_categories=true) %}<div class="notice {{ category }}" role="status">{{ message }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
-  <footer class="footer"><span>Horas <span class="muted">/</span> Cálculo de horas mensuales</span><span>v{{ version }} <span aria-hidden="true">·</span> <a href="https://github.com/kadyto/Horas" target="_blank" rel="noopener noreferrer">Proyecto en GitHub →</a></span></footer>
+  <footer class="footer"><span>Horas <span class="muted">/</span> Cálculo de horas {{ 'semanales' if frequency == 'weekly' else 'mensuales' }}</span><span>v{{ version }} <span aria-hidden="true">·</span> <a href="https://github.com/kadyto/Horas" target="_blank" rel="noopener noreferrer">Proyecto en GitHub →</a></span></footer>
 </body>
 </html>

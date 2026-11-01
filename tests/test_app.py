@@ -57,7 +57,7 @@ def test_routes_are_private_and_csrf_is_enforced(app, client):
     for path in ["/", "/history", "/entry", "/settings", "/export.csv", "/backup.json"]:
         assert stranger.get(path).status_code == 302
     assert client.post("/settings", data={"default_hours": 8, "default_rate": 50}).status_code == 400
-    assert backup(client)["settings"] == {"default_minutes": 120, "default_rate_cents": 0}
+    assert backup(client)["settings"] == {"default_minutes": 120, "default_rate_cents": 0, "payment_frequency": "monthly"}
     response = client.get("/")
     assert "no-store" in response.headers["Cache-Control"]
     assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
@@ -95,7 +95,7 @@ def test_quick_entry_defaults_and_duplicate_click(client):
     for _ in range(2):
         assert post(client, "/entries/quick", day="2026-10-05", hours="2").status_code == 200
     data = backup(client)
-    assert data["entries"] == [{"day": "2026-10-05", "minutes": 120, "note": ""}]
+    assert data["entries"] == [{"day": "2026-10-05", "minutes": 120, "note": "", "rate_cents": 0, "paid": 0}]
     assert client.get("/?month=2026-10").status_code == 200
 
 

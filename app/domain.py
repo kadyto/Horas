@@ -1,6 +1,6 @@
 import calendar
 import re
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 MONTHS = ("", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
@@ -86,3 +86,46 @@ def adjacent_month(value, delta):
 def calendar_weeks(value):
     year, month = map(int, value.split("-"))
     return calendar.Calendar(firstweekday=0).monthdayscalendar(year, month)
+
+
+def frequency_value(value):
+    if value not in ("monthly", "weekly"):
+        raise ValueError("Elige pago mensual o semanal.")
+    return value
+
+
+def week_start(value):
+    d = date.fromisoformat(value)
+    return (d - timedelta(days=d.weekday())).isoformat()
+
+
+def week_value(value):
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise ValueError("La semana no es válida.")
+    try:
+        d = date.fromisoformat(value)
+    except ValueError:
+        raise ValueError("La semana no es válida.") from None
+    if d.weekday() != 0 or not "1999-12-27" <= value <= "2100-12-27":
+        raise ValueError("La semana debe empezar en lunes y contener fechas entre 2000 y 2100.")
+    return value
+
+
+def week_label(value):
+    start = date.fromisoformat(value)
+    end = start + timedelta(days=6)
+    iso = start.isocalendar()
+    return f"Semana {iso.week:02d} · {start:%d/%m/%Y} – {end:%d/%m/%Y}"
+
+
+def year_weeks(year):
+    if not 1999 <= year <= 2100:
+        raise ValueError("El año debe estar entre 1999 y 2100.")
+    monday = date.fromisocalendar(year, 1, 1)
+    result = []
+    while monday.isocalendar().year == year:
+        value = monday.isoformat()
+        if "1999-12-27" <= value <= "2100-12-27":
+            result.append(value)
+        monday += timedelta(days=7)
+    return result

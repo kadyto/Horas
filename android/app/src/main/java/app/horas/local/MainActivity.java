@@ -76,20 +76,27 @@ public final class MainActivity extends Activity {
                 JSONObject q=new JSONObject(request); Object result=JSONObject.NULL;
                 switch(q.getString("action")) {
                     case "preferences": result=store.preferences().put("has_previous_backup",previousFile().exists()); break;
-                    case "month": result=store.month(q.getString("month")); break;
+                    case "month":
+                        String calendarMonth=Domain.month(q.getString("month"));
+                        String frequency=store.preferences().getString("payment_frequency");
+                        String selectedWeek=Domain.week(q.optString("week",Domain.weekStart(calendarMonth.equals(LocalDate.now().toString().substring(0,7))?LocalDate.now().toString():calendarMonth+"-01")));
+                        result=store.period(frequency,"weekly".equals(frequency)?selectedWeek:calendarMonth)
+                            .put("calendar_entries",store.calendarEntries(calendarMonth)).put("selected_week",selectedWeek); break;
+                    case "frequency": store.setFrequency(q.getString("frequency")); break;
+                    case "period": result=store.period(q.getString("frequency"),q.getString("key")); break;
                     case "history": result=store.history(q.getInt("year")); break;
                     case "entry": result=store.entry(q.getString("day")); break;
                     case "quick": result=store.quick(q.getString("day"),q.getInt("minutes")); break;
                     case "save": store.save(q.getString("day"),q.getInt("minutes"),q.optString("note",""),q.optLong("revision",0)); break;
                     case "delete": store.delete(q.getString("day"),q.getLong("revision")); break;
-                    case "preferences_save": store.setPreferences(q.getInt("minutes"),q.getString("rate")); break;
-                    case "rate": store.setRate(q.getString("month"),q.getString("rate")); break;
-                    case "paid": store.setPaid(q.getString("month"),q.getInt("paid"),q.getInt("minutes"),q.getInt("rate_cents")); break;
+                    case "preferences_save": store.setPreferences(q.getInt("minutes"),q.getString("rate"),q.optString("frequency",store.preferences().getString("payment_frequency"))); break;
+                    case "rate": store.setRate(q.optString("frequency","monthly"),q.optString("key",q.optString("month")),q.getString("rate")); break;
+                    case "paid": store.setPaid(q.optString("frequency","monthly"),q.optString("key",q.optString("month")),q.getInt("paid"),q.getInt("minutes"),q.getInt("rate_cents"),q.optString("signature",null)); break;
                     case "export":
                         String kind=q.getString("kind");
                         if("csv".equals(kind)) {
-                            String month=Domain.month(q.getString("month"));
-                            export(store.csv(month),"text/csv","horas-"+month+".csv");
+                            String exportFrequency=q.optString("frequency","monthly"),key=q.optString("key",q.optString("month"));
+                            export(store.csv(exportFrequency,key),"text/csv","horas-"+key+".csv");
                         } else if("backup".equals(kind)) {
                             export(store.backup().toString(2),"application/json","horas-copia-"+LocalDate.now()+".json");
                         } else if("previous".equals(kind)) {

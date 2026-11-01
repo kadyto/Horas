@@ -64,8 +64,20 @@ def main():
         page = post("/entries/quick", csrf=csrf(logged_in), day="2026-10-01", hours="1.5").read().decode()
         post("/month/rate", csrf=csrf(page), month="2026-10", rate="12.75").close()
         payload = json.loads(get("/backup.json").read())
-        assert payload["entries"] == [{"day": "2026-10-01", "minutes": 90, "note": ""}]
+        assert payload["entries"] == [{"day": "2026-10-01", "minutes": 90, "note": "", "rate_cents": 1275, "paid": 0}]
         assert "19,13 €" in get("/?month=2026-10").read().decode()
+        page = get("/?month=2026-10").read().decode()
+        page = post("/payment-frequency", csrf=csrf(page), payment_frequency="weekly", month="2026-10", week="2026-09-28").read().decode()
+        assert "Cálculo de horas semanales" in page
+        page = post("/week/rate", csrf=csrf(page), week="2026-09-28", rate="18").read().decode()
+        signature = re.search(r'name="signature" value="([^"]+)"', page).group(1)
+        page = post("/week/paid", csrf=csrf(page), week="2026-09-28", paid="1", signature=signature).read().decode()
+        page = post("/entries/quick", csrf=csrf(page), day="2026-10-02", hours="2").read().decode()
+        assert "63,00 €" in page and "Parcial" in page
+        payload = json.loads(get("/backup.json").read())
+        assert payload["settings"]["payment_frequency"] == "weekly"
+        assert [row["paid"] for row in payload["entries"]] == [1, 0]
+        assert [row["rate_cents"] for row in payload["entries"]] == [1800, 1800]
         run("stop", "--time", "10", name)
         run("rm", name)
         base = start()

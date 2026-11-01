@@ -2,9 +2,9 @@ name: Android sin servidor
 on:
   push:
     branches: [main]
-    paths: ['android/**', 'app/static/**', '.github/workflows/android.yaml']
+    paths: ['android/**', 'app/static/**', 'tests/fixtures/**', '.github/workflows/android.yaml']
   pull_request:
-    paths: ['android/**', 'app/static/**', '.github/workflows/android.yaml']
+    paths: ['android/**', 'app/static/**', 'tests/fixtures/**', '.github/workflows/android.yaml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -50,6 +50,10 @@ jobs:
             grep -q 'horasTests=ok' /tmp/horas-android-tests.txt
             adb uninstall app.horas.local
             adb install android/releases/Horas-1.0.0.apk
+            adb shell am start -n app.horas.local/.MainActivity
+            sleep 2
+            adb shell am force-stop app.horas.local
+            adb install -r android/releases/Horas-1.1.0.apk
             adb shell am start -n app.horas.local/.MainActivity
             sleep 2
             adb shell pidof app.horas.local

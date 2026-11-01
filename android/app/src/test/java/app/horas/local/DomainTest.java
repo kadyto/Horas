@@ -31,4 +31,13 @@ public class DomainTest {
             try{Domain.day(day);fail("Accepted invalid date");}catch(IllegalArgumentException expected){}
         }
     }
+    @Test public void weeksCrossMonthsAndIsoYears() {
+        assertEquals("2020-12-28",Domain.weekStart("2021-01-01"));
+        assertEquals("2026-10-26",Domain.weekStart("2026-11-01"));
+        assertEquals(53,Domain.yearWeeks(2020).size());
+        assertEquals(52,Domain.yearWeeks(2021).size());
+        assertTrue(Domain.yearWeeks(2020).contains("2020-12-28"));
+        assertFalse(Domain.yearWeeks(2021).contains("2020-12-28"));
+        assertEquals("1999-12-27",Domain.week("1999-12-27"));
+    }
 }

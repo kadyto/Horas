@@ -4,7 +4,7 @@ Versión independiente de Horas para **Android 8.0 o posterior**. Funciona sin s
 
 ## Instalar
 
-1. Descarga [Horas-1.0.0.apk](releases/Horas-1.0.0.apk) desde este directorio; en GitHub usa el botón de descarga del archivo.
+1. Descarga [Horas-1.1.0.apk](releases/Horas-1.1.0.apk) desde este directorio; en GitHub usa el botón de descarga del archivo.
 2. Abre el APK en el dispositivo y permite instalar aplicaciones desde el navegador o gestor de archivos que estés usando, si Android lo solicita.
 3. Abre **Horas**. Aparece directamente el calendario del mes actual.
 
@@ -17,12 +17,15 @@ Su huella SHA-256 está publicada en [SHA256SUMS](releases/SHA256SUMS).
 - Toca un día vacío para guardar 2 horas por defecto. Puedes configurar otra cantidad habitual o elegirla en el selector de registro rápido.
 - Registra desde 0,5 hasta 24 horas por día, en intervalos de media hora.
 - Edita y elimina registros, con notas opcionales. Un segundo toque no duplica el día.
-- Configura la tarifa habitual y la tarifa de cada mes. Los meses anteriores conservan su precio por hora.
-- Consulta los acumulados mensuales y anuales, y marca meses como cobrados o pendientes.
+- Elige pago mensual o semanal, con semanas completas de lunes a domingo, incluso al cruzar de mes o año.
+- Configura la tarifa habitual o la de un periodo concreto; cada registro conserva su precio al cambiar de modo.
+- Consulta los acumulados mensuales, semanales y anuales, con cobrado, pendiente y estado parcial. Los cobros se comparten entre vistas por día.
 - Guarda el mes en CSV o una copia de todos los datos en JSON usando el selector de archivos de Android.
 - Importa copias JSON de la aplicación Android o de la versión web. La importación sustituye los datos locales tras una confirmación; una copia inválida no cambia la base de datos. Se conserva una copia previa que puedes guardar desde Ajustes.
 
-Las reglas de cálculo coinciden con la versión web: minutos y céntimos enteros, total mensual redondeado al céntimo con los medios céntimos hacia arriba, y suma anual de los totales mensuales. Cambiar horas o tarifa devuelve el mes a pendiente; modificar solo una nota conserva su estado de cobro.
+Las reglas coinciden con la [versión web](../README.md#pago-mensual-y-semanal): minutos y céntimos enteros, tarifas conservadas por registro y redondeo por periodo. El año semanal usa semanas ISO completas. Cobrar un periodo marca sus días, sin duplicar cobros al cambiar de modo. Cambiar horas o precio devuelve los días afectados a pendiente; modificar solo una nota conserva el estado.
+
+El APK 1.1.0 tiene la misma firma que el 1.0.0: instálalo como actualización, sin desinstalar. La migración de SQLite conserva los registros, tarifas y cobros existentes. Las copias JSON de formato 1 también se pueden importar; las nuevas usan formato 2 y se intercambian con la web actualizada.
 
 La fecha del mes actual procede del dispositivo. Cada instalación mantiene sus propios datos; no hay sincronización automática con otros dispositivos o con un servidor. **Desinstalar la aplicación o borrar sus datos elimina los registros locales.** Usa Ajustes → Guardar copia JSON para conservarlos o trasladarlos.
 

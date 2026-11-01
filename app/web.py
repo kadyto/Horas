@@ -1,3 +1,4 @@
+import calendar
 import csv
 import hashlib
 import hmac
@@ -15,9 +16,12 @@ from flask import Flask, Response, abort, flash, redirect, render_template, requ
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from .domain import (MONTHS, adjacent_month, calendar_weeks, day_label, day_value, earnings,
+from .domain import (MONTHS, adjacent_month, day_label, day_value,
                      hours_text, hours_to_minutes, money_text, month_label, month_value, rate_to_cents)
-from .storage import connect, ensure_month, initialize, month_data, settings
+from .storage import (connect, ensure_month, initialize, month_data, settings, period_data,
+                      entry_rate, set_period_rate, set_period_paid)
+from .domain import frequency_value, week_start, week_value, week_label, year_weeks
+from .backups import validate_backup
 
 
 def create_app(config=None):
@@ -92,10 +96,16 @@ def create_app(config=None):
 
     @app.context_processor
     def template_context():
+        with connect(db_path) as conn:
+            frequency = settings(conn)["payment_frequency"] if authorized() else "monthly"
         return {"authenticated": authorized(), "csrf": csrf_token, "today": date.today().isoformat(),
-                "current_month": date.today().strftime("%Y-%m"), "version": "1.0.2"}
+                "current_month": date.today().strftime("%Y-%m"), "version": "1.1.0", "frequency": frequency}
 
     app.jinja_env.filters.update(hours=hours_text, money=money_text, month_label=month_label, day_label=day_label)
+    app.jinja_env.filters["week_label"] = week_label
+
+    def calendar_redirect(day, **extra):
+        return redirect(url_for("calendar_page", month=day[:7], week=week_start(day), **extra))
 
     @app.errorhandler(ValueError)
     def invalid_input(error):
@@ -152,13 +162,37 @@ def create_app(config=None):
         month = month_value(request.args.get("month", date.today().strftime("%Y-%m")))
         with connect(db_path) as conn:
             prefs = settings(conn)
-            data = month_data(conn, month)
+            frequency = prefs["payment_frequency"]
+            selected_week = week_value(request.args.get("week", week_start(date.today().isoformat() if month == date.today().strftime("%Y-%m") else month + "-01")))
+            data = period_data(conn, frequency, selected_week if frequency == "weekly" else month)
+            dates = list(calendar.Calendar().itermonthdates(int(month[:4]), int(month[5:])))
+            all_entries = {r["day"]: dict(r) for r in conn.execute("SELECT * FROM entries WHERE day BETWEEN ? AND ?", (dates[0].isoformat(), dates[-1].isoformat()))}
+        rows = []
+        for i in range(0, len(dates), 7):
+            cells = [{"day": d.isoformat(), "n": d.day, "in_month": d.strftime("%Y-%m") == month,
+                      "allowed": "2000-01-01" <= d.isoformat() <= "2100-12-31"} for d in dates[i:i+7]]
+            rows.append({"week": dates[i].isoformat(), "cells": cells})
+        start = date.fromisoformat(selected_week)
+        prior_week, next_week = (start - timedelta(days=7)).isoformat(), (start + timedelta(days=7)).isoformat()
         selected = request.args.get("hours", hours_text(prefs["default_minutes"]))
         quick_minutes = hours_to_minutes(selected)
         return render_template("calendar.html", active="calendar", month=month, data=data, prefs=prefs,
-                               entries={e["day"]: e for e in data["entries"]}, weeks=calendar_weeks(month),
+                               entries=all_entries, rows=rows, selected_week=selected_week,
+                               prior_week=prior_week if prior_week >= "1999-12-27" else None,
+                               next_week=next_week if next_week <= "2100-12-27" else None,
                                previous=adjacent_month(month, -1), following=adjacent_month(month, 1),
-                               total=earnings(data["minutes"], data["rate_cents"]), quick_minutes=quick_minutes)
+                               total=data["total"], quick_minutes=quick_minutes)
+
+    @app.post("/payment-frequency")
+    @protected
+    def payment_frequency():
+        frequency = frequency_value(request.form.get("payment_frequency"))
+        month = month_value(request.form.get("month", date.today().strftime("%Y-%m")))
+        selected = week_value(request.form.get("week", week_start(month + "-01")))
+        with connect(db_path) as conn:
+            conn.execute("UPDATE settings SET payment_frequency=? WHERE id=1", (frequency,))
+        flash("Forma de pago actualizada. Se conservan las horas, tarifas y cobros de cada día.", "success")
+        return redirect(url_for("calendar_page", month=month, week=selected))
 
     @app.post("/entries/quick")
     @protected
@@ -168,14 +202,13 @@ def create_app(config=None):
         with connect(db_path) as conn:
             conn.execute("BEGIN IMMEDIATE")
             ensure_month(conn, day[:7])
-            cursor = conn.execute("INSERT OR IGNORE INTO entries(day,month,minutes,revision) VALUES (?,?,?,?)", (day, day[:7], minutes, secrets.randbits(52)))
-            if cursor.rowcount:
-                conn.execute("UPDATE months SET paid=0 WHERE month=?", (day[:7],))
+            cents = entry_rate(conn, day)
+            cursor = conn.execute("INSERT OR IGNORE INTO entries(day,month,minutes,revision,rate_cents,paid) VALUES (?,?,?,?,?,0)", (day, day[:7], minutes, secrets.randbits(52), cents))
         if not cursor.rowcount:
             flash("Este día ya tenía horas. Puedes editarlas sin duplicar el registro.", "info")
             return redirect(url_for("entry", day=day))
         flash(f"Guardado: {hours_text(minutes).replace('.', ',')} h el {date.fromisoformat(day).day} de {MONTHS[int(day[5:7])]}. Puedes tocar el día para editarlo.", "success")
-        return redirect(url_for("calendar_page", month=day[:7], hours=hours_text(minutes)))
+        return calendar_redirect(day, hours=hours_text(minutes))
 
     @app.route("/entry", methods=["GET", "POST"])
     @protected
@@ -184,10 +217,10 @@ def create_app(config=None):
         with connect(db_path) as conn:
             row = conn.execute("SELECT * FROM entries WHERE day=?", (day,)).fetchone()
             prefs = settings(conn)
-            rate = month_data(conn, day[:7])["rate_cents"]
+            rate = row["rate_cents"] if row else prefs["default_rate_cents"]
         if request.method == "GET":
             return render_template("entry.html", active="calendar", day=day, entry=dict(row) if row else None,
-                                   minutes=row["minutes"] if row else prefs["default_minutes"], rate=rate)
+                                   minutes=row["minutes"] if row else prefs["default_minutes"], rate=rate, day_week=week_start(day))
         minutes = hours_to_minutes(request.form.get("hours"))
         note = request.form.get("note", "").strip()
         if len(note) > 500:
@@ -201,13 +234,13 @@ def create_app(config=None):
             if (current["revision"] if current else 0) != int(revision):
                 return render_template("error.html", message="Este día ha cambiado en otra pestaña. Vuelve al calendario y abre el registro para ver la última versión."), 409
             ensure_month(conn, day[:7])
-            conn.execute("""INSERT INTO entries(day,month,minutes,note,revision) VALUES (?,?,?,?,?)
-                         ON CONFLICT(day) DO UPDATE SET minutes=excluded.minutes,note=excluded.note,revision=entries.revision+1""",
-                         (day, day[:7], minutes, note, secrets.randbits(52)))
-            if not current or current["minutes"] != minutes:
-                conn.execute("UPDATE months SET paid=0 WHERE month=?", (day[:7],))
+            cents = current["rate_cents"] if current else entry_rate(conn, day)
+            conn.execute("""INSERT INTO entries(day,month,minutes,note,revision,rate_cents,paid) VALUES (?,?,?,?,?,?,0)
+                         ON CONFLICT(day) DO UPDATE SET paid=CASE WHEN entries.minutes!=excluded.minutes THEN 0 ELSE entries.paid END,
+                         minutes=excluded.minutes,note=excluded.note,revision=entries.revision+1""",
+                         (day, day[:7], minutes, note, secrets.randbits(52), cents))
         flash("Registro guardado.", "success")
-        return redirect(url_for("calendar_page", month=day[:7]))
+        return calendar_redirect(day)
 
     @app.post("/entries/delete")
     @protected
@@ -218,9 +251,8 @@ def create_app(config=None):
             cursor = conn.execute("DELETE FROM entries WHERE day=? AND revision=?", (day, revision))
             if not cursor.rowcount:
                 return render_template("error.html", message="El registro ha cambiado o ya se ha eliminado. Vuelve al calendario para comprobarlo."), 409
-            conn.execute("UPDATE months SET paid=0 WHERE month=?", (day[:7],))
         flash("Registro eliminado.", "success")
-        return redirect(url_for("calendar_page", month=day[:7]))
+        return calendar_redirect(day)
 
     @app.post("/month/rate")
     @protected
@@ -228,8 +260,8 @@ def create_app(config=None):
         month = month_value(request.form.get("month"))
         cents = rate_to_cents(request.form.get("rate"))
         with connect(db_path) as conn:
-            ensure_month(conn, month)
-            conn.execute("UPDATE months SET paid=CASE WHEN rate_cents != ? THEN 0 ELSE paid END,rate_cents=? WHERE month=?", (cents, cents, month))
+            conn.execute("BEGIN IMMEDIATE")
+            set_period_rate(conn, "monthly", month, cents)
         flash("Tarifa del mes actualizada. Los demás meses conservan su tarifa.", "success")
         return redirect(url_for("calendar_page", month=month))
 
@@ -242,50 +274,79 @@ def create_app(config=None):
             raise ValueError("El estado de cobro no es válido.")
         with connect(db_path) as conn:
             conn.execute("BEGIN IMMEDIATE")
-            data = month_data(conn, month)
-            if not data["entries"]:
-                raise ValueError("Añade horas antes de marcar el mes como cobrado.")
-            # Do not confirm payment against a stale total from another tab.
-            if request.form.get("minutes") != str(data["minutes"]) or request.form.get("rate_cents") != str(data["rate_cents"]):
-                return render_template("error.html", message="El total ha cambiado. Revisa el mes antes de marcar el cobro."), 409
-            conn.execute("UPDATE months SET paid=? WHERE month=?", (int(paid), month))
+            try:
+                set_period_paid(conn, "monthly", month, int(paid), request.form.get("signature"), request.form.get("minutes"), request.form.get("rate_cents"))
+            except ValueError as error:
+                return render_template("error.html", message=str(error)), 409
         flash("Mes marcado como cobrado." if paid == "1" else "Mes marcado como pendiente.", "success")
         return redirect(url_for("calendar_page", month=month))
+
+    @app.post("/week/rate")
+    @protected
+    def week_rate():
+        key = week_value(request.form.get("week"))
+        cents = rate_to_cents(request.form.get("rate"))
+        with connect(db_path) as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            set_period_rate(conn, "weekly", key, cents)
+        flash("Tarifa aplicada a todos los días de la semana completa.", "success")
+        return calendar_redirect(max(key, "2000-01-01"))
+
+    @app.post("/week/paid")
+    @protected
+    def week_paid():
+        key = week_value(request.form.get("week"))
+        paid = request.form.get("paid")
+        if paid not in ("0", "1"):
+            raise ValueError("El estado de cobro no es válido.")
+        with connect(db_path) as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                set_period_paid(conn, "weekly", key, int(paid), request.form.get("signature"), request.form.get("minutes"), request.form.get("rate_cents"))
+            except ValueError as error:
+                return render_template("error.html", message=str(error)), 409
+        flash("Estado de cobro de la semana actualizado.", "success")
+        return calendar_redirect(max(key, "2000-01-01"))
 
     @app.get("/history")
     @protected
     def history():
-        raw_year = request.args.get("year", str(date.today().year))
-        if not raw_year.isdecimal() or not 2000 <= int(raw_year) <= 2100:
-            raise ValueError("El año debe estar entre 2000 y 2100.")
-        year = int(raw_year)
         with connect(db_path) as conn:
-            years = {int(row[0][:4]) for row in conn.execute("SELECT month FROM months")}
-            months = [month_data(conn, f"{year}-{m:02d}") for m in range(1, 13)]
-        for item in months:
-            item["total"] = earnings(item["minutes"], item["rate_cents"])
-        total = sum(item["total"] for item in months)
-        pending = sum(item["total"] for item in months if not item["paid"])
-        return render_template("history.html", active="history", year=year, years=sorted(years | {year, date.today().year}, reverse=True),
-                               months=months, total=total, pending=pending, minutes=sum(item["minutes"] for item in months))
+            frequency = settings(conn)["payment_frequency"]
+            default_year = date.today().isocalendar().year if frequency == "weekly" else date.today().year
+            raw_year = request.args.get("year", str(default_year))
+            minimum = 1999 if frequency == "weekly" else 2000
+            if not raw_year.isdecimal() or not minimum <= int(raw_year) <= 2100:
+                raise ValueError(f"El año debe estar entre {minimum} y 2100.")
+            year = int(raw_year)
+            keys = year_weeks(year) if frequency == "weekly" else [f"{year}-{m:02d}" for m in range(1, 13)]
+            periods = [period_data(conn, frequency, key) for key in keys]
+            years = {date.fromisoformat(row[0]).isocalendar().year if frequency == "weekly" else int(row[0][:4]) for row in conn.execute("SELECT day FROM entries")}
+        total = sum(item["total"] for item in periods)
+        pending = sum(item["pending_total"] for item in periods)
+        return render_template("history.html", active="history", year=year, minimum=minimum,
+                               years=sorted(years | {year, default_year}, reverse=True), periods=periods,
+                               total=total, pending=pending, minutes=sum(item["minutes"] for item in periods))
 
     @app.get("/export.csv")
     @protected
     def export_csv():
         month = month_value(request.args.get("month", date.today().strftime("%Y-%m")))
         with connect(db_path) as conn:
-            data = month_data(conn, month)
+            frequency = settings(conn)["payment_frequency"]
+            key = week_value(request.args.get("week", week_start(date.today().isoformat() if month == date.today().strftime("%Y-%m") else month + "-01"))) if frequency == "weekly" else month
+            data = period_data(conn, frequency, key)
         output = io.StringIO(newline="")
         writer = csv.writer(output, delimiter=";")
-        writer.writerow(["Fecha", "Horas", "Tarifa (EUR/h)", "Nota", "Mes cobrado"])
+        writer.writerow(["Fecha", "Horas", "Tarifa (EUR/h)", "Nota", "Día cobrado"])
         for item in data["entries"]:
             note = item["note"]
             if note.lstrip().startswith(("=", "+", "-", "@")) or note.startswith(("\t", "\r", "\n")):
                 note = "'" + note
-            writer.writerow([item["day"], hours_text(item["minutes"]).replace(".", ","), f"{data['rate_cents'] / 100:.2f}".replace(".", ","), note, "Sí" if data["paid"] else "No"])
+            writer.writerow([item["day"], hours_text(item["minutes"]).replace(".", ","), f"{item['rate_cents'] / 100:.2f}".replace(".", ","), note, "Sí" if item["paid"] else "No"])
         writer.writerow([])
-        writer.writerow(["TOTAL", hours_text(data["minutes"]).replace(".", ","), "Importe (EUR)", f"{earnings(data['minutes'], data['rate_cents']) / 100:.2f}".replace(".", ",")])
-        return Response("\ufeff" + output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f'attachment; filename="horas-{month}.csv"'})
+        writer.writerow(["TOTAL", hours_text(data["minutes"]).replace(".", ","), "Importe (EUR)", f"{data['total'] / 100:.2f}".replace(".", ",")])
+        return Response("\ufeff" + output.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f'attachment; filename="horas-{key}.csv"'})
 
     @app.route("/settings", methods=["GET", "POST"])
     @protected
@@ -294,8 +355,9 @@ def create_app(config=None):
             minutes = hours_to_minutes(request.form.get("default_hours"))
             cents = rate_to_cents(request.form.get("default_rate"))
             with connect(db_path) as conn:
-                conn.execute("UPDATE settings SET default_minutes=?,default_rate_cents=? WHERE id=1", (minutes, cents))
-            flash("Preferencias guardadas. La tarifa se aplicará a los meses nuevos.", "success")
+                frequency = frequency_value(request.form.get("payment_frequency", settings(conn)["payment_frequency"]))
+                conn.execute("UPDATE settings SET default_minutes=?,default_rate_cents=?,payment_frequency=? WHERE id=1", (minutes, cents, frequency))
+            flash("Preferencias guardadas. La tarifa se aplicará a los periodos nuevos.", "success")
             return redirect(url_for("settings_page"))
         with connect(db_path) as conn:
             prefs = settings(conn)
@@ -306,9 +368,10 @@ def create_app(config=None):
     def backup():
         with connect(db_path) as conn:
             conn.execute("BEGIN")
-            payload = {"format": "horas", "version": 1, "settings": settings(conn),
-                       "months": [dict(row) for row in conn.execute("SELECT month,rate_cents,paid FROM months ORDER BY month")],
-                       "entries": [dict(row) for row in conn.execute("SELECT day,minutes,note FROM entries ORDER BY day")]}
+            payload = {"format": "horas", "version": 2, "settings": settings(conn),
+                       "months": [{"month": row["month"], "rate_cents": row["rate_cents"], "paid": month_data(conn, row["month"])["paid"]} for row in conn.execute("SELECT month,rate_cents FROM months ORDER BY month")],
+                       "weeks": [dict(row) for row in conn.execute("SELECT * FROM weeks ORDER BY week")],
+                       "entries": [dict(row) for row in conn.execute("SELECT day,minutes,note,rate_cents,paid FROM entries ORDER BY day")]}
         return Response(json.dumps(payload, ensure_ascii=False, indent=2), mimetype="application/json",
                         headers={"Content-Disposition": f'attachment; filename="horas-copia-{date.today().isoformat()}.json"'})
 
@@ -322,7 +385,7 @@ def create_app(config=None):
             payload = json.load(upload) if upload else None
         except (ValueError, UnicodeError):
             raise ValueError("El archivo no es una copia JSON válida.") from None
-        prefs, months, entries = validate_backup(payload)
+        prefs, months, weeks, entries = validate_backup(payload)
         with connect(db_path) as conn:
             conn.execute("BEGIN IMMEDIATE")
             # Preserve a server-side copy before the atomic replacement.
@@ -333,44 +396,12 @@ def create_app(config=None):
                     source.backup(destination)
             conn.execute("DELETE FROM entries")
             conn.execute("DELETE FROM months")
-            conn.execute("UPDATE settings SET default_minutes=?,default_rate_cents=? WHERE id=1", prefs)
+            conn.execute("DELETE FROM weeks")
+            conn.execute("UPDATE settings SET default_minutes=?,default_rate_cents=?,payment_frequency=? WHERE id=1", prefs)
             conn.executemany("INSERT INTO months(month,rate_cents,paid) VALUES (?,?,?)", months)
-            conn.executemany("INSERT INTO entries(day,month,minutes,note,revision) VALUES (?,?,?,?,?)", [(*row, secrets.randbits(52)) for row in entries])
+            conn.executemany("INSERT INTO weeks(week,rate_cents) VALUES (?,?)", weeks)
+            conn.executemany("INSERT INTO entries(day,month,minutes,note,rate_cents,paid,revision) VALUES (?,?,?,?,?,?,?)", [(*row, secrets.randbits(52)) for row in entries])
         flash("Copia restaurada. Se ha conservado una copia de seguridad previa en el volumen de datos.", "success")
         return redirect(url_for("calendar_page"))
 
     return app
-
-
-def validate_backup(payload):
-    def integer(value, low, high, step=1):
-        if type(value) is not int or not low <= value <= high or value % step:
-            raise ValueError("La copia contiene una cantidad no válida.")
-        return value
-
-    if not isinstance(payload, dict) or payload.get("format") != "horas" or type(payload.get("version")) is not int or payload.get("version") != 1:
-        raise ValueError("La copia no tiene un formato compatible con Horas.")
-    try:
-        pref = payload["settings"]
-        prefs = (integer(pref["default_minutes"], 30, 1440, 30), integer(pref["default_rate_cents"], 0, 1000000))
-        if not isinstance(payload["months"], list) or not isinstance(payload["entries"], list) or len(payload["months"]) > 1212 or len(payload["entries"]) > 37000:
-            raise ValueError("La copia contiene demasiados registros o un formato incorrecto.")
-        months, entries, seen_months, seen_days = [], [], set(), set()
-        for row in payload["months"]:
-            month = month_value(row["month"])
-            if month in seen_months:
-                raise ValueError("La copia contiene meses duplicados.")
-            seen_months.add(month)
-            months.append((month, integer(row["rate_cents"], 0, 1000000), integer(row["paid"], 0, 1)))
-        for row in payload["entries"]:
-            day = day_value(row["day"])
-            if day in seen_days or day[:7] not in seen_months:
-                raise ValueError("La copia contiene días duplicados o sin mes asociado.")
-            note = row["note"]
-            if not isinstance(note, str) or len(note) > 500:
-                raise ValueError("La copia contiene una nota no válida.")
-            seen_days.add(day)
-            entries.append((day, day[:7], integer(row["minutes"], 30, 1440, 30), note))
-        return prefs, months, entries
-    except (KeyError, TypeError):
-        raise ValueError("La copia está incompleta o tiene un formato incorrecto.") from None
