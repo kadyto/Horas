@@ -42,8 +42,8 @@ def decimal_value(value):
 
 def hours_to_minutes(value):
     hours = decimal_value(value)
-    if hours < Decimal("0.5") or hours > 24 or hours % Decimal("0.5"):
-        raise ValueError("Las horas deben ir de 0,5 a 24, en intervalos de media hora.")
+    if hours < Decimal("0.25") or hours > 24 or hours % Decimal("0.25"):
+        raise ValueError("Las horas deben ir de 0,25 a 24, en intervalos de 15 minutos.")
     return int(hours * 60)
 
 

@@ -5,7 +5,7 @@ document.querySelectorAll('[data-auto-submit]').forEach((input) => {
 const hoursInput = document.querySelector('#entry-hours');
 if (hoursInput) {
   const setHours = (amount) => {
-    hoursInput.value = Math.max(0.5, Math.min(24, amount));
+    hoursInput.value = Math.max(0.25, Math.min(24, amount));
     hoursInput.dispatchEvent(new Event('input'));
   };
   document.querySelectorAll('[data-hours-step]').forEach((button) => {

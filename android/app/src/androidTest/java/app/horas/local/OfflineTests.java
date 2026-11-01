@@ -47,6 +47,7 @@ public final class OfflineTests extends Instrumentation {
             store.close();store=new Store(context,"offline-tests.sqlite3");
             check(store.entry("2026-10-05").getInt("minutes")==120,"SQLite survives reopen");
             checkWeeklyAndMigration(context,store);
+            checkQuarterHoursAndMigration(context,store);
             check(context.checkSelfPermission("android.permission.INTERNET")==PackageManager.PERMISSION_DENIED,"No Internet permission");
             MainActivity activity=(MainActivity)startActivitySync(new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             long deadline=System.currentTimeMillis()+30000;
@@ -54,6 +55,7 @@ public final class OfflineTests extends Instrumentation {
             check("true".equals(js(activity,"!!document.querySelector('.calendar-grid')")),"Offline WebView loads assets and SQLite");
             check("true".equals(js(activity,"document.querySelector('h1').textContent==='Cálculo de horas mensuales'")),"App opens without login");
             check("true".equals(js(activity,"document.documentElement.scrollWidth<=window.innerWidth")),"Mobile layout fits");
+            js(activity,"window.horasTestMonth=lastCalendarMonth;true");
             Store appStore=new Store(context);JSONObject original=appStore.backup();
             try {
                 js(activity,"document.querySelector('.empty-day').click();true");
@@ -77,6 +79,17 @@ public final class OfflineTests extends Instrumentation {
                 check("true".equals(js(activity,"document.querySelector('.week-navigation').textContent.indexOf('26/10/2026')>=0&&document.querySelector('.week-navigation').textContent.indexOf('01/11/2026')>=0")),"Cross-month week shown complete");
                 js(activity,"document.querySelector('#payment-frequency').value='monthly';document.querySelector('#payment-frequency').dispatchEvent(new Event('change',{bubbles:true}));true");
                 check("true".equals(js(activity,"document.querySelector('h1').textContent==='Cálculo de horas mensuales'")),"Switch back without deleting data");
+                js(activity,"location.hash='/calendar?month='+window.horasTestMonth;true");Thread.sleep(250);
+                js(activity,"document.querySelector('.recorded a').click();true");Thread.sleep(250);
+                js(activity,"document.querySelector('[data-step=\"0.25\"]').click();true");
+                check("true".equals(js(activity,"document.querySelector('#entry-hours').value==='1.75'")),"Plus button adds 15 minutes");
+                js(activity,"document.querySelector('[data-step=\"-0.25\"]').click();document.querySelector('[data-step=\"-0.25\"]').click();true");
+                check("true".equals(js(activity,"document.querySelector('#entry-hours').value==='1.25'")),"Minus button subtracts 15 minutes");
+                js(activity,"document.querySelector('[data-hours=\"0.25\"]').click();document.querySelector('[data-step=\"-0.25\"]').click();true");
+                check("true".equals(js(activity,"document.querySelector('#entry-hours').value==='0.25'")),"Minimum is exactly 15 minutes");
+                js(activity,"document.querySelector('#entry-form [type=submit]').click();true");Thread.sleep(250);
+                check("true".equals(js(activity,"document.querySelector('.day-hours').textContent.trim()==='0,25 h'")),"Quarter hour saved through UI");
+                check("true".equals(js(activity,"document.querySelector('#quick-hours option[value=\"15\"]')!==null&&document.querySelector('#quick-hours option[value=\"45\"]')!==null")),"Quick selector has 15-minute slots");
             } finally {appStore.restore(original);appStore.close();}
             js(activity,"document.querySelector('[href=\"#/settings\"]').click();true");Thread.sleep(500);
             check("true".equals(js(activity,"!!document.querySelector('#prefs-form')")),"Settings navigation");
@@ -84,6 +97,37 @@ public final class OfflineTests extends Instrumentation {
             result.putString("horasTests","ok");result.putInt("assertions",assertions);finish(Activity.RESULT_OK,result);
         }catch(Throwable error){result.putString("horasTests","failed");result.putString("failure",android.util.Log.getStackTraceString(error));finish(Activity.RESULT_CANCELED,result);}
         finally {if(store!=null)store.close();getTargetContext().deleteDatabase("offline-tests.sqlite3");}
+    }
+    private void checkQuarterHoursAndMigration(Context context,Store store)throws Exception {
+        try(java.io.InputStream input=getContext().getAssets().open("quarter-hours-v2.json");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){
+            byte[] buffer=new byte[2048];int count;while((count=input.read(buffer))!=-1)out.write(buffer,0,count);
+            store.restore(new JSONObject(new String(out.toByteArray(),java.nio.charset.StandardCharsets.UTF_8)));
+        }
+        JSONObject summary=store.period("weekly","2026-11-02");
+        check(summary.getInt("minutes")==135&&summary.getLong("total")==2869,"Quarter hours total rounds correctly");
+        check(summary.getLong("paid_total")==319&&summary.getLong("pending_total")==2550,"Quarter hours paid and pending balance");
+        check(store.preferences().getInt("default_minutes")==15,"Quarter-hour default imported");
+        JSONObject copy=store.backup();store.restore(copy);
+        check(store.backup().toString().equals(copy.toString()),"Quarter-hour JSON roundtrip");
+        check(store.csv("weekly","2026-11-02").contains("0,25")&&store.csv("weekly","2026-11-02").contains("0,75"),"Quarter hours in CSV");
+        context.deleteDatabase("quarter-migration.sqlite3");
+        try(android.database.sqlite.SQLiteDatabase db=context.openOrCreateDatabase("quarter-migration.sqlite3",0,null)){
+            db.execSQL("CREATE TABLE settings(id INTEGER PRIMARY KEY,default_minutes INTEGER CHECK(default_minutes BETWEEN 30 AND 1440 AND default_minutes%30=0),default_rate_cents INTEGER,payment_frequency TEXT)");
+            db.execSQL("INSERT INTO settings VALUES(1,90,2000,'weekly')");
+            db.execSQL("CREATE TABLE months(month TEXT PRIMARY KEY,rate_cents INTEGER,paid INTEGER)");db.execSQL("INSERT INTO months VALUES('2026-11',1000,1)");
+            db.execSQL("CREATE TABLE weeks(week TEXT PRIMARY KEY,rate_cents INTEGER)");db.execSQL("INSERT INTO weeks VALUES('2026-11-02',1800)");
+            db.execSQL("CREATE TABLE entries(day TEXT PRIMARY KEY,month TEXT REFERENCES months(month),minutes INTEGER CHECK(minutes BETWEEN 30 AND 1440 AND minutes%30=0),note TEXT,revision INTEGER,rate_cents INTEGER,paid INTEGER)");
+            db.execSQL("INSERT INTO entries VALUES('2026-11-02','2026-11',90,'Conservado',88,1275,1)");db.setVersion(2);
+        }
+        try(Store migrated=new Store(context,"quarter-migration.sqlite3")){
+            JSONObject old=migrated.entry("2026-11-02");
+            check(old.getInt("minutes")==90&&old.getInt("rate_cents")==1275&&old.getInt("paid")==1&&old.getLong("revision")==88,"V2 upgrade retains hours, price, payment and revision");
+            check("weekly".equals(migrated.preferences().getString("payment_frequency")),"V2 upgrade retains payment mode");
+            migrated.setPreferences(15,"20","weekly");migrated.quick("2026-11-03",15);
+            check(migrated.entry("2026-11-03").getInt("minutes")==15&&migrated.entry("2026-11-03").getInt("rate_cents")==1800,"Migrated constraints accept 15 minutes with existing weekly price");
+            try{migrated.getWritableDatabase().execSQL("UPDATE entries SET minutes=20");throw new AssertionError("Invalid slot accepted");}catch(android.database.sqlite.SQLiteConstraintException expected){assertions++;}
+        }
+        context.deleteDatabase("quarter-migration.sqlite3");
     }
     private void checkWeeklyAndMigration(Context context,Store store)throws Exception {
         byte[] bytes;

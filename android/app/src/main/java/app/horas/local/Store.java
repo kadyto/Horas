@@ -16,16 +16,16 @@ import java.util.Set;
 public final class Store extends SQLiteOpenHelper {
     private final SecureRandom random = new SecureRandom();
     public Store(Context context) { this(context, "horas.sqlite3"); }
-    Store(Context context, String name) { super(context, name, null, 2); setWriteAheadLoggingEnabled(true); }
+    Store(Context context, String name) { super(context, name, null, 3); setWriteAheadLoggingEnabled(true); }
 
     @Override public void onConfigure(SQLiteDatabase db) { db.setForeignKeyConstraintsEnabled(true); }
     @Override public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE settings (id INTEGER PRIMARY KEY CHECK(id=1),default_minutes INTEGER NOT NULL CHECK(default_minutes BETWEEN 30 AND 1440 AND default_minutes%30=0),default_rate_cents INTEGER NOT NULL CHECK(default_rate_cents BETWEEN 0 AND 1000000))");
-        db.execSQL("INSERT INTO settings VALUES(1,120,0)");
+        db.execSQL("CREATE TABLE settings (id INTEGER PRIMARY KEY CHECK(id=1),default_minutes INTEGER NOT NULL CHECK(default_minutes BETWEEN 15 AND 1440 AND default_minutes%15=0),default_rate_cents INTEGER NOT NULL CHECK(default_rate_cents BETWEEN 0 AND 1000000),payment_frequency TEXT NOT NULL DEFAULT 'monthly' CHECK(payment_frequency IN('monthly','weekly')))");
+        db.execSQL("INSERT INTO settings VALUES(1,120,0,'monthly')");
         db.execSQL("CREATE TABLE months(month TEXT PRIMARY KEY,rate_cents INTEGER NOT NULL CHECK(rate_cents BETWEEN 0 AND 1000000),paid INTEGER NOT NULL DEFAULT 0 CHECK(paid IN(0,1)))");
-        db.execSQL("CREATE TABLE entries(day TEXT PRIMARY KEY,month TEXT NOT NULL REFERENCES months(month),minutes INTEGER NOT NULL CHECK(minutes BETWEEN 30 AND 1440 AND minutes%30=0),note TEXT NOT NULL DEFAULT '',revision INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE entries(day TEXT PRIMARY KEY,month TEXT NOT NULL REFERENCES months(month),minutes INTEGER NOT NULL CHECK(minutes BETWEEN 15 AND 1440 AND minutes%15=0),note TEXT NOT NULL DEFAULT '',revision INTEGER NOT NULL,rate_cents INTEGER NOT NULL DEFAULT 0 CHECK(rate_cents BETWEEN 0 AND 1000000),paid INTEGER NOT NULL DEFAULT 0 CHECK(paid IN(0,1)))");
         db.execSQL("CREATE INDEX entries_month ON entries(month)");
-        onUpgrade(db,1,2);
+        db.execSQL("CREATE TABLE weeks(week TEXT PRIMARY KEY,rate_cents INTEGER NOT NULL CHECK(rate_cents BETWEEN 0 AND 1000000))");
     }
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if(oldVersion<2) {
@@ -34,6 +34,18 @@ public final class Store extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE entries ADD COLUMN paid INTEGER NOT NULL DEFAULT 0 CHECK(paid IN(0,1))");
             db.execSQL("UPDATE entries SET rate_cents=(SELECT rate_cents FROM months WHERE month=entries.month),paid=(SELECT paid FROM months WHERE month=entries.month)");
             db.execSQL("CREATE TABLE weeks(week TEXT PRIMARY KEY,rate_cents INTEGER NOT NULL CHECK(rate_cents BETWEEN 0 AND 1000000))");
+        }
+        if(oldVersion<3) {
+            db.execSQL("CREATE TABLE settings_quarter(id INTEGER PRIMARY KEY CHECK(id=1),default_minutes INTEGER NOT NULL CHECK(default_minutes BETWEEN 15 AND 1440 AND default_minutes%15=0),default_rate_cents INTEGER NOT NULL CHECK(default_rate_cents BETWEEN 0 AND 1000000),payment_frequency TEXT NOT NULL DEFAULT 'monthly' CHECK(payment_frequency IN('monthly','weekly')))");
+            db.execSQL("INSERT INTO settings_quarter SELECT id,default_minutes,default_rate_cents,payment_frequency FROM settings");
+            db.execSQL("DROP TABLE settings");db.execSQL("ALTER TABLE settings_quarter RENAME TO settings");
+            db.execSQL("CREATE TABLE entries_quarter(day TEXT PRIMARY KEY,month TEXT NOT NULL REFERENCES months(month),minutes INTEGER NOT NULL CHECK(minutes BETWEEN 15 AND 1440 AND minutes%15=0),note TEXT NOT NULL DEFAULT '',revision INTEGER NOT NULL,rate_cents INTEGER NOT NULL DEFAULT 0 CHECK(rate_cents BETWEEN 0 AND 1000000),paid INTEGER NOT NULL DEFAULT 0 CHECK(paid IN(0,1)))");
+            db.execSQL("INSERT INTO entries_quarter SELECT day,month,minutes,note,revision,rate_cents,paid FROM entries");
+            db.execSQL("DROP TABLE entries");db.execSQL("ALTER TABLE entries_quarter RENAME TO entries");
+            db.execSQL("CREATE INDEX entries_month ON entries(month)");
+            try(Cursor cursor=db.rawQuery("PRAGMA foreign_key_check",null)){
+                if(cursor.moveToFirst())throw new IllegalStateException("La base de datos contiene referencias no válidas; no se ha aplicado la migración.");
+            }
         }
     }
     private long newRevision() { return random.nextLong() & 0xfffffffffffffL; }
@@ -205,7 +217,7 @@ public final class Store extends SQLiteOpenHelper {
         int version=data.getInt("version");
         JSONObject prefs=data.getJSONObject("settings");
         if(version==2)Domain.frequency(prefs.getString("payment_frequency"));
-        strictInt(prefs,"default_minutes",30,1440,30); strictInt(prefs,"default_rate_cents",0,1000000,1);
+        strictInt(prefs,"default_minutes",15,1440,15); strictInt(prefs,"default_rate_cents",0,1000000,1);
         JSONArray months=data.getJSONArray("months"),entries=data.getJSONArray("entries");
         if(months.length()>1212 || entries.length()>37000) throw new IllegalArgumentException("La copia contiene demasiados registros.");
         Set<String> seenMonths=new HashSet<>(),seenDays=new HashSet<>();
@@ -222,7 +234,7 @@ public final class Store extends SQLiteOpenHelper {
             JSONObject row=entries.getJSONObject(i); String day=Domain.day(row.getString("day"));
             if(version==2){strictInt(row,"rate_cents",0,1000000,1);strictInt(row,"paid",0,1,1);}
             if(!seenDays.add(day) || !seenMonths.contains(day.substring(0,7))) throw new IllegalArgumentException("La copia contiene días duplicados o sin mes asociado.");
-            strictInt(row,"minutes",30,1440,30);
+            strictInt(row,"minutes",15,1440,15);
             if(!(row.get("note") instanceof String)) throw new IllegalArgumentException("La copia contiene una nota no válida.");
             String note=row.getString("note");
             if(note.codePointCount(0,note.length())>500) throw new IllegalArgumentException("La copia contiene una nota demasiado larga.");

@@ -12,7 +12,7 @@ def validate_backup(payload):
     try:
         version = payload["version"]
         pref = payload["settings"]
-        prefs = (integer(pref["default_minutes"], 30, 1440, 30), integer(pref["default_rate_cents"], 0, 1000000),
+        prefs = (integer(pref["default_minutes"], 15, 1440, 15), integer(pref["default_rate_cents"], 0, 1000000),
                  frequency_value(pref["payment_frequency"]) if version == 2 else "monthly")
         raw_weeks = payload["weeks"] if version == 2 else []
         if not all(isinstance(x, list) for x in (payload["months"], payload["entries"], raw_weeks)) or len(payload["months"]) > 1212 or len(payload["entries"]) > 37000 or len(raw_weeks) > 5400:
@@ -41,7 +41,7 @@ def validate_backup(payload):
             seen_days.add(day)
             cents = integer(row["rate_cents"], 0, 1000000) if version == 2 else seen_months[day[:7]][0]
             paid = integer(row["paid"], 0, 1) if version == 2 else seen_months[day[:7]][1]
-            entries.append((day, day[:7], integer(row["minutes"], 30, 1440, 30), note, cents, paid))
+            entries.append((day, day[:7], integer(row["minutes"], 15, 1440, 15), note, cents, paid))
         return prefs, months, weeks, entries
     except (KeyError, TypeError):
         raise ValueError("La copia está incompleta o tiene un formato incorrecto.") from None

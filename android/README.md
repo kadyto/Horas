@@ -4,7 +4,7 @@ Versión independiente de Horas para **Android 8.0 o posterior**. Funciona sin s
 
 ## Instalar
 
-1. Descarga [Horas-1.1.0.apk](releases/Horas-1.1.0.apk) desde este directorio; en GitHub usa el botón de descarga del archivo.
+1. Descarga [Horas-1.1.1.apk](releases/Horas-1.1.1.apk) desde este directorio; en GitHub usa el botón de descarga del archivo.
 2. Abre el APK en el dispositivo y permite instalar aplicaciones desde el navegador o gestor de archivos que estés usando, si Android lo solicita.
 3. Abre **Horas**. Aparece directamente el calendario del mes actual.
 
@@ -15,7 +15,7 @@ Su huella SHA-256 está publicada en [SHA256SUMS](releases/SHA256SUMS).
 ## Funciones
 
 - Toca un día vacío para guardar 2 horas por defecto. Puedes configurar otra cantidad habitual o elegirla en el selector de registro rápido.
-- Registra desde 0,5 hasta 24 horas por día, en intervalos de media hora.
+- Registra desde 0,25 hasta 24 horas por día, en intervalos de 15 minutos.
 - Edita y elimina registros, con notas opcionales. Un segundo toque no duplica el día.
 - Elige pago mensual o semanal, con semanas completas de lunes a domingo, incluso al cruzar de mes o año.
 - Configura la tarifa habitual o la de un periodo concreto; cada registro conserva su precio al cambiar de modo.
@@ -25,7 +25,7 @@ Su huella SHA-256 está publicada en [SHA256SUMS](releases/SHA256SUMS).
 
 Las reglas coinciden con la [versión web](../README.md#pago-mensual-y-semanal): minutos y céntimos enteros, tarifas conservadas por registro y redondeo por periodo. El año semanal usa semanas ISO completas. Cobrar un periodo marca sus días, sin duplicar cobros al cambiar de modo. Cambiar horas o precio devuelve los días afectados a pendiente; modificar solo una nota conserva el estado.
 
-El APK 1.1.0 tiene la misma firma que el 1.0.0: instálalo como actualización, sin desinstalar. La migración de SQLite conserva los registros, tarifas y cobros existentes. Las copias JSON de formato 1 también se pueden importar; las nuevas usan formato 2 y se intercambian con la web actualizada.
+El APK 1.1.1 tiene la misma firma que los APK 1.0.0 y 1.1.0: instálalo como actualización, sin desinstalar. La migración de SQLite admite intervalos de 15 minutos y conserva los registros, tarifas, cobros y la forma de pago existentes. Las copias JSON de formato 1 también se pueden importar; las nuevas usan formato 2 y se intercambian con la web actualizada.
 
 La fecha del mes actual procede del dispositivo. Cada instalación mantiene sus propios datos; no hay sincronización automática con otros dispositivos o con un servidor. **Desinstalar la aplicación o borrar sus datos elimina los registros locales.** Usa Ajustes → Guardar copia JSON para conservarlos o trasladarlos.
 
@@ -61,7 +61,7 @@ El CSS y el reloj se incluyen desde `../app/static`; la compilación incorpora e
 
 ## Verificación
 
-- Pruebas JVM para fechas, medias horas, tarifas y redondeo.
+- Pruebas JVM para fechas, intervalos de 15 minutos, tarifas y redondeo.
 - Pruebas en emulador Android con SQLite real: persistencia, duplicados, ediciones obsoletas, tarifas históricas, cobros, CSV y restauración atómica.
 - Arranque del WebView local, navegación a Ajustes, ausencia del permiso de Internet y apertura directa sin pantalla de acceso.
 - `lintDebug` y compilación de los APK de aplicación y pruebas.

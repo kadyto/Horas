@@ -31,8 +31,8 @@ public final class Domain {
         } catch (Exception error) { throw new IllegalArgumentException("La fecha no es válida."); }
     }
     public static int minutes(int value) {
-        if (value < 30 || value > 1440 || value % 30 != 0)
-            throw new IllegalArgumentException("Las horas deben ir de 0,5 a 24, en intervalos de media hora.");
+        if (value < 15 || value > 1440 || value % 15 != 0)
+            throw new IllegalArgumentException("Las horas deben ir de 0,25 a 24, en intervalos de 15 minutos.");
         return value;
     }
     public static int rate(String value) {

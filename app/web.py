@@ -99,7 +99,7 @@ def create_app(config=None):
         with connect(db_path) as conn:
             frequency = settings(conn)["payment_frequency"] if authorized() else "monthly"
         return {"authenticated": authorized(), "csrf": csrf_token, "today": date.today().isoformat(),
-                "current_month": date.today().strftime("%Y-%m"), "version": "1.1.0", "frequency": frequency}
+                "current_month": date.today().strftime("%Y-%m"), "version": "1.1.1", "frequency": frequency}
 
     app.jinja_env.filters.update(hours=hours_text, money=money_text, month_label=month_label, day_label=day_label)
     app.jinja_env.filters["week_label"] = week_label

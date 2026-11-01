@@ -56,6 +56,10 @@ jobs:
             adb install -r android/releases/Horas-1.1.0.apk
             adb shell am start -n app.horas.local/.MainActivity
             sleep 2
+            adb shell am force-stop app.horas.local
+            adb install -r android/releases/Horas-1.1.1.apk
+            adb shell am start -n app.horas.local/.MainActivity
+            sleep 2
             adb shell pidof app.horas.local
             adb exec-out screencap -p > android/android-emulator.png
       - uses: actions/upload-artifact@v4

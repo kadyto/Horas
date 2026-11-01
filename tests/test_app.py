@@ -129,7 +129,7 @@ def test_fractional_hours_tariff_history_and_rounding(client):
     assert "60,00 €" in history
 
 
-@pytest.mark.parametrize("value", ["0", "0.25", "1.1", "24.5", "nan", "Infinity", "-1", "", "<script>"])
+@pytest.mark.parametrize("value", ["0", "0.1", "1.1", "24.5", "nan", "Infinity", "-1", "", "<script>"])
 def test_invalid_hours_rejected(client, value):
     assert post(client, "/entries/quick", day="2026-10-01", hours=value).status_code == 400
     assert backup(client)["entries"] == []

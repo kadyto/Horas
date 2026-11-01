@@ -2,12 +2,12 @@
 
 Un calendario sencillo para registrar horas trabajadas y calcular la remuneración de cada mes. Interfaz en español, adaptable a móvil, sin servicios externos para funcionar.
 
-También hay una **[aplicación Android autónoma](android/README.md)**, con SQLite en el dispositivo, sin servidor y sin contraseña: [descargar APK](https://github.com/kadyto/Horas/raw/refs/heads/main/android/releases/Horas-1.1.0.apk). La versión para servidor que se describe a continuación mantiene su acceso con contraseña.
+También hay una **[aplicación Android autónoma](android/README.md)**, con SQLite en el dispositivo, sin servidor y sin contraseña: [descargar APK](https://github.com/kadyto/Horas/raw/refs/heads/main/android/releases/Horas-1.1.1.apk). La versión para servidor que se describe a continuación mantiene su acceso con contraseña.
 
 ## Qué puedes hacer
 
 - **Un toque, un registro:** al abrir la aplicación aparece el mes actual. Toca un día vacío para guardar **2 horas** por defecto. Cambia esa cantidad en Ajustes o usa el selector de registro rápido.
-- **Medias horas:** registra desde 0,5 hasta 24 horas por día, en intervalos de media hora. Toca un día guardado para editar las horas, añadir una nota o eliminarlo.
+- **Intervalos de 15 minutos:** registra desde 0,25 hasta 24 horas por día (15, 30, 45, 60 minutos…). Toca un día guardado para editar las horas, añadir una nota o eliminarlo.
 - **Pago mensual o semanal:** elige la forma de pago en el calendario o en Ajustes. Las semanas van de lunes a domingo y se muestran completas aunque crucen de mes o de año.
 - **Tarifa por hora:** configura una tarifa habitual y ajusta la de un periodo concreto. Cada registro conserva su tarifa al cambiar de modo.
 - **Totales e historial:** consulta horas, días e importes por mes, semana y año.
@@ -108,7 +108,9 @@ Los cobros se comparten por día: cobrar una semana se refleja en los meses afec
 
 ## Actualizar desde una versión anterior
 
-La base de datos se migra automáticamente: los registros conservan su tarifa mensual anterior y heredan el cobro del mes en que estaban. El modo inicial es mensual. El nuevo APK **1.1.0** utiliza la misma firma que el anterior y puede instalarse como actualización, sin desinstalar ni borrar los datos.
+La base de datos se migra automáticamente: los registros conservan su tarifa mensual anterior y heredan el cobro del mes en que estaban. Las versiones que aún no tenían forma de pago empiezan en mensual; si ya estaba elegida, se conserva. El nuevo APK **1.1.1** utiliza la misma firma que el anterior y puede instalarse como actualización, sin desinstalar ni borrar los datos.
+
+La versión 1.1.1 amplía los intervalos a 15 minutos y migra también las restricciones de SQLite. Conserva los registros, las tarifas, los cobros y la forma de pago existentes; las 2 horas habituales iniciales siguen siendo configurables.
 
 Las copias JSON nuevas usan el formato 2 e incluyen la forma de pago, las tarifas por periodo y el precio y cobro de cada día. Ambas aplicaciones actualizadas importan tanto esas copias como las antiguas de formato 1. Las versiones anteriores no interpretan el formato 2.
 

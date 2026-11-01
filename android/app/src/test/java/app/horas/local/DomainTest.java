@@ -9,14 +9,21 @@ public class DomainTest {
         assertEquals(1001,Domain.earnings(60,1001));
         assertEquals(501,Domain.earnings(30,1001));
     }
-    @Test public void acceptsHalfHoursAndDecimalComma() {
+    @Test public void acceptsQuarterHoursAndDecimalComma() {
+        assertEquals(15,Domain.minutes(15));
+        assertEquals(45,Domain.minutes(45));
+        assertEquals(75,Domain.minutes(75));
         assertEquals(90,Domain.minutes(90));
+        assertEquals("0.25",Domain.hours(15));
+        assertEquals("0.75",Domain.hours(45));
+        assertEquals("1.25",Domain.hours(75));
+        assertEquals(319,Domain.earnings(15,1275));
         assertEquals("1.5",Domain.hours(90));
         assertEquals(1275,Domain.rate("12,75"));
         assertEquals(0,Domain.rate("0"));
     }
-    @Test public void rejectsFractionsSmallerThanHalfAnHour() {
-        for(int minutes:new int[]{0,15,61,1450}) {
+    @Test public void rejectsFractionsNotAlignedToQuarterHours() {
+        for(int minutes:new int[]{0,10,20,61,1450}) {
             try{Domain.minutes(minutes);fail("Accepted invalid minutes");}catch(IllegalArgumentException expected){}
         }
     }

@@ -78,6 +78,12 @@ def main():
         assert payload["settings"]["payment_frequency"] == "weekly"
         assert [row["paid"] for row in payload["entries"]] == [1, 0]
         assert [row["rate_cents"] for row in payload["entries"]] == [1800, 1800]
+        page = post("/settings", csrf=csrf(page), default_hours="0.25", default_rate="18", payment_frequency="weekly").read().decode()
+        page = post("/entries/quick", csrf=csrf(page), day="2026-10-03", hours="0.25").read().decode()
+        assert "67,50 €" in page
+        payload = json.loads(get("/backup.json").read())
+        assert payload["settings"]["default_minutes"] == 15
+        assert [row["minutes"] for row in payload["entries"]] == [90, 120, 15]
         run("stop", "--time", "10", name)
         run("rm", name)
         base = start()

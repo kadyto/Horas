@@ -94,7 +94,7 @@ def test_old_json_upgrades_paid_and_rates(app, client):
 def test_legacy_sqlite_migration_is_idempotent(tmp_path):
     path=tmp_path/'horas.sqlite3'
     with sqlite3.connect(path) as conn:
-        conn.executescript(SCHEMA)
+        conn.executescript(SCHEMA.replace("BETWEEN 15", "BETWEEN 30").replace("% 15", "% 30"))
         conn.execute("INSERT INTO months VALUES('2026-10',1275,1)")
         conn.execute("INSERT INTO entries VALUES('2026-10-31','2026-10',90,'Legacy',7)")
     for _ in range(2):

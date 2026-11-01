@@ -12,3 +12,5 @@
 .table-scroll{position:relative;max-width:100%;width:100%}
 
 @media(max-width:620px){.rate-panel form{display:block}.rate-panel .field-help{margin:10px 0 14px;font-size:.74rem}.rate-panel .button{width:100%}}
+
+@media(max-width:620px){.day-content{padding:7px 4px}.day-hours.long-hours{font-size:.8rem;letter-spacing:-.5px;max-width:100%}.day-hours.long-hours small{font-size:.55rem}}

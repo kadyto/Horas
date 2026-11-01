@@ -1,5 +1,6 @@
 import sqlite3
 import hashlib
+import re
 from contextlib import contextmanager
 from datetime import date, timedelta
 from .domain import frequency_value, month_value, week_value, week_start, earnings
@@ -7,7 +8,7 @@ from .domain import frequency_value, month_value, week_value, week_start, earnin
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    default_minutes INTEGER NOT NULL CHECK (default_minutes BETWEEN 30 AND 1440 AND default_minutes % 30 = 0),
+    default_minutes INTEGER NOT NULL CHECK (default_minutes BETWEEN 15 AND 1440 AND default_minutes % 15 = 0),
     default_rate_cents INTEGER NOT NULL CHECK (default_rate_cents BETWEEN 0 AND 1000000)
 );
 INSERT OR IGNORE INTO settings(id,default_minutes,default_rate_cents) VALUES (1, 120, 0);
@@ -19,7 +20,7 @@ CREATE TABLE IF NOT EXISTS months (
 CREATE TABLE IF NOT EXISTS entries (
     day TEXT PRIMARY KEY,
     month TEXT NOT NULL REFERENCES months(month),
-    minutes INTEGER NOT NULL CHECK (minutes BETWEEN 30 AND 1440 AND minutes % 30 = 0),
+    minutes INTEGER NOT NULL CHECK (minutes BETWEEN 15 AND 1440 AND minutes % 15 = 0),
     note TEXT NOT NULL DEFAULT '' CHECK (length(note) <= 500),
     revision INTEGER NOT NULL DEFAULT 1
 );
@@ -59,6 +60,35 @@ def initialize(path):
             conn.execute("ALTER TABLE entries ADD COLUMN paid INTEGER NOT NULL DEFAULT 0 CHECK(paid IN (0,1))")
             conn.execute("UPDATE entries SET paid=(SELECT paid FROM months WHERE month=entries.month)")
         conn.execute("CREATE TABLE IF NOT EXISTS weeks(week TEXT PRIMARY KEY,rate_cents INTEGER NOT NULL CHECK(rate_cents BETWEEN 0 AND 1000000))")
+        _migrate_quarter_hours(conn)
+
+
+def _migrate_quarter_hours(conn):
+    # SQLite cannot alter CHECK constraints. Copy within the startup transaction,
+    # retaining prices, payment states, revisions and all existing preferences.
+    definitions = dict(conn.execute("SELECT name,sql FROM sqlite_master WHERE type='table' AND name IN ('settings','entries')"))
+    if re.search(r"BETWEEN\s+30\s+AND|%\s*30\b", definitions["settings"], re.I):
+        conn.execute("""CREATE TABLE settings_quarter (
+            id INTEGER PRIMARY KEY CHECK(id=1),
+            default_minutes INTEGER NOT NULL CHECK(default_minutes BETWEEN 15 AND 1440 AND default_minutes%15=0),
+            default_rate_cents INTEGER NOT NULL CHECK(default_rate_cents BETWEEN 0 AND 1000000),
+            payment_frequency TEXT NOT NULL DEFAULT 'monthly' CHECK(payment_frequency IN('monthly','weekly')))""")
+        conn.execute("INSERT INTO settings_quarter SELECT id,default_minutes,default_rate_cents,payment_frequency FROM settings")
+        conn.execute("DROP TABLE settings")
+        conn.execute("ALTER TABLE settings_quarter RENAME TO settings")
+    if re.search(r"BETWEEN\s+30\s+AND|%\s*30\b", definitions["entries"], re.I):
+        conn.execute("""CREATE TABLE entries_quarter (
+            day TEXT PRIMARY KEY,month TEXT NOT NULL REFERENCES months(month),
+            minutes INTEGER NOT NULL CHECK(minutes BETWEEN 15 AND 1440 AND minutes%15=0),
+            note TEXT NOT NULL DEFAULT '' CHECK(length(note)<=500),revision INTEGER NOT NULL DEFAULT 1,
+            rate_cents INTEGER NOT NULL DEFAULT 0 CHECK(rate_cents BETWEEN 0 AND 1000000),
+            paid INTEGER NOT NULL DEFAULT 0 CHECK(paid IN(0,1)))""")
+        conn.execute("INSERT INTO entries_quarter SELECT day,month,minutes,note,revision,rate_cents,paid FROM entries")
+        conn.execute("DROP TABLE entries")
+        conn.execute("ALTER TABLE entries_quarter RENAME TO entries")
+        conn.execute("CREATE INDEX entries_month ON entries(month)")
+    if conn.execute("PRAGMA foreign_key_check").fetchone():
+        raise RuntimeError("La base de datos contiene referencias no válidas; no se ha aplicado la migración.")
 
 
 def settings(conn):
